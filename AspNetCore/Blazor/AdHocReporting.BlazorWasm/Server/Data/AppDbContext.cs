@@ -1,18 +1,13 @@
-﻿using Microsoft.AspNetCore.ApiAuthorization.IdentityServer;
+﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-
-using Duende.IdentityServer.EntityFramework.Options;
 
 using EqDemo.Models;
 
 namespace EqDemo.Data
 {
-    public class AppDbContext : ApiAuthorizationDbContext<ApplicationUser>
+    public class AppDbContext : IdentityDbContext<ApplicationUser>
     {
-        public AppDbContext(
-            DbContextOptions options,
-            IOptions<OperationalStoreOptions> operationalStoreOptions) : base(options, operationalStoreOptions)
+        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
         }
 
