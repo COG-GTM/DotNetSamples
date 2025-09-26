@@ -29,18 +29,10 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(opts => {
 .AddRoles<IdentityRole>()
 .AddEntityFrameworkStores<AppDbContext>();
 
-builder.Services.AddIdentityServer()
-    .AddApiAuthorization<ApplicationUser, AppDbContext>(options => {
-        //the following 2 lines are necessary to support roles on the WebAssembly side
-        options.IdentityResources["openid"].UserClaims.Add("role");
-        options.ApiResources.Single().UserClaims.Add("role");
-    });
-
 // We need to do this as it maps "role" to ClaimTypes.Role and causes issues
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Remove("role");
 
-builder.Services.AddAuthentication()
-    .AddIdentityServerJwt();
+builder.Services.AddAuthentication();
 
 //EasyQuery services
 builder.Services.AddEasyQuery()
@@ -79,7 +71,6 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
-app.UseIdentityServer();
 app.UseAuthentication();
 app.UseAuthorization();
 
