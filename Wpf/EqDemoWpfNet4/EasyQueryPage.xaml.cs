@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Data;
-using System.Data.Entity.Migrations;
 using System.IO;
 using System.Configuration;
 using System.Windows;
@@ -9,6 +8,9 @@ using System.Windows.Controls;
 
 using Microsoft.Win32;
 using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+
+using Korzh.DbUtils;
 
 using EasyData.Export;
 
@@ -16,7 +18,7 @@ using Korzh.EasyQuery;
 using Korzh.EasyQuery.Wpf;
 using Korzh.EasyQuery.Db;
 using Korzh.EasyQuery.Services;
-using Korzh.EasyQuery.EntityFramework;
+using Korzh.EasyQuery.EntityFrameworkCore;
 
 using EqDemo.Models;
 
@@ -46,10 +48,16 @@ namespace EqDemo
         private void InitDatabase()
         {
             var connectionString = ConfigurationManager.ConnectionStrings["DefaultConnection"]?.ToString();
-            _connection = new SqlConnection(connectionString);
-
-            var migrator = new DbMigrator(new EqDemo.Migrations.Configuration());
-            migrator.Update();
+            using (var dbContext = ApplicationDbContext.Create()) {
+                _connection = new SqlConnection(connectionString);
+                if (dbContext.Database.EnsureCreated()) {
+                    Korzh.DbUtils.DbInitializer.Create(options => {
+                        options.UseSqlServer(connectionString);
+                        options.UseZipPacker(System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "App_Data/EqDemoData.zip"));
+                    })
+                    .Seed();
+                }
+            }
         }
 
         EasyQueryManagerSql EqManager { get; set; }
@@ -62,11 +70,12 @@ namespace EqDemo
             var options = new EasyQueryOptions();
             EqManager = new EasyQueryManagerSql(options);
 
-            EqManager.Model.LoadFromDbContext(ApplicationDbContext.Create());
+            using (var dbContext = ApplicationDbContext.Create()) 
+                EqManager.Model.LoadFromDbContext(dbContext);
 
             // How to load from connection
             // EasyQueryManagerSql.RegisterDbGate<SqlServerGate>();
-            // EqManager.Model.LoadFromConnection(ApplicationDbContext.Create().Database.GetConnection());
+            // EqManager.Model.LoadFromConnection(ApplicationDbContext.Create().Database.GetDbConnection());
 
             //query initialization
             EqManager.Query.ConditionsChanged += query_ConditionsChanged;
