@@ -38,7 +38,7 @@
             this.btnExportToCsv = new System.Windows.Forms.Button();
             this.btnExportToExcel = new System.Windows.Forms.Button();
             this.groupBoxResultSet = new System.Windows.Forms.GroupBox();
-            this.dataGrid1 = new System.Windows.Forms.DataGrid();
+            this.dataGrid1 = new System.Windows.Forms.DataGridView();
             this.splitter1 = new System.Windows.Forms.Splitter();
             this.groupBoxSQL = new System.Windows.Forms.GroupBox();
             this.teSQL = new System.Windows.Forms.TextBox();
@@ -161,11 +161,11 @@
             this.dataGrid1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.dataGrid1.DataMember = "";
-            this.dataGrid1.HeaderForeColor = System.Drawing.SystemColors.ControlText;
+            this.dataGrid1.ColumnHeadersHeight = 29;
             this.dataGrid1.Location = new System.Drawing.Point(4, 29);
             this.dataGrid1.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.dataGrid1.Name = "dataGrid1";
+            this.dataGrid1.RowHeadersWidth = 51;
             this.dataGrid1.Size = new System.Drawing.Size(771, 240);
             this.dataGrid1.TabIndex = 1;
             // 

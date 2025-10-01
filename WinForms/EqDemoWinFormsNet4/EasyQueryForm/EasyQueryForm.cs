@@ -1,18 +1,20 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Configuration;
+using System.Diagnostics;
 using System.Data;
-using System.Data.Entity.Migrations;
 using System.IO;
 using System.Windows.Forms;
 
 using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+
+using Korzh.DbUtils;
 
 using EasyData.Export;
 
 using Korzh.EasyQuery;
 using Korzh.EasyQuery.Db;
-using Korzh.EasyQuery.EntityFramework;
+using Korzh.EasyQuery.EntityFrameworkCore;
 using Korzh.EasyQuery.Services;
 using Korzh.EasyQuery.WinForms;
 
@@ -31,7 +33,7 @@ namespace EqDemo
         private System.Windows.Forms.Splitter splitter1;
         private System.Windows.Forms.GroupBox groupBoxResultSet;
         private System.Windows.Forms.TextBox teSQL;
-        private System.Windows.Forms.DataGrid dataGrid1;
+        private System.Windows.Forms.DataGridView dataGrid1;
         private System.Windows.Forms.Splitter splitter2;
         private System.Windows.Forms.Panel panelBG;
         private System.Windows.Forms.Panel panelButtons;
@@ -65,7 +67,7 @@ namespace EqDemo
 
         private EntityAttr _countryAttr = null;
 
-        private EasyQueryManagerSql EqManager;
+        EasyQueryManagerSql EqManager;
 
         public EasyQueryForm()
         {
@@ -91,16 +93,12 @@ namespace EqDemo
         {
             var options = new EasyQueryOptions();
             EqManager = new EasyQueryManagerSql(options);
+ 
+            using (var dbContext = ApplicationDbContext.Create()) 
+                EqManager.Model.LoadFromDbContext(dbContext);
 
-            // loads model from DbContext
-            EqManager.Model.LoadFromDbContext(ApplicationDbContext.Create());
-
-            // intialize the data model and load it from XML (or JSON) file
-            // EqManager.Model.LoadFromJsonFile("Your path");
-
-            //  intialize the data model and load it from connection
-            // DbGate.Register<SqlServerGate>();
-            // EqManager.Model.LoadFromConnection(ApplicationDbContext.Create().Database.Connection);
+            // EasyQueryManagerSql.RegisterDbGate<SqlServerGate>();
+            // EqManager.Model.LoadFromConnection(ApplicationDbContext.Create().Database.GetConnection);
 
             //saving the reference to Customer Country attribute in our model (will be used on RequestList processing)
             _countryAttr = EqManager.Model.EntityRoot.FindAttributeById("Customers.Country");
@@ -112,9 +110,9 @@ namespace EqDemo
             EntPanel.Query = EqManager.Query;
 
             //setting differnt properties of EasyQuery visual controls
-            this.CPanel.AllowEditCaptions = true;
-            this.CPanel.AllowSorting = true;
-            this.EntPanel.ShowFilter = true;
+            CPanel.AllowEditCaptions = true;
+            CPanel.AllowSorting = true;
+            EntPanel.ShowFilter = true;
         }
 
         private void TimerEventProcessor(Object myObject, EventArgs myEventArgs)
@@ -130,10 +128,16 @@ namespace EqDemo
                 try {
                     string currentDir = System.IO.Directory.GetCurrentDirectory();
                     var connectionString = ConfigurationManager.ConnectionStrings["DefaultConnection"]?.ToString();
-                    _connection = new SqlConnection(connectionString);
-
-                    var migrator = new DbMigrator(new EqDemo.Migrations.Configuration());
-                    migrator.Update();
+                    using (var dbContext = ApplicationDbContext.Create()) {
+                        _connection = new SqlConnection(connectionString);
+                        if (dbContext.Database.EnsureCreated()) {
+                            Korzh.DbUtils.DbInitializer.Create(options => {
+                                options.UseSqlServer(connectionString);
+                                options.UseZipPacker(System.IO.Path.Combine(Directory.GetCurrentDirectory(), "App_Data/EqDemoData.zip"));
+                            })
+                            .Seed();
+                        }
+                    };
                 }
                 catch (Exception ex) {
                     MessageBox.Show(ex.Message);
@@ -215,7 +219,7 @@ namespace EqDemo
                 resultDA.Fill(ResultDS, "Result");
                 dataGrid1.DataSource = ResultDS.Tables[0].DefaultView;
 
-                _connection.Close();
+                CloseConnections();
                 ShowExportPanel();
             }
             catch (Exception error) {
@@ -378,7 +382,14 @@ namespace EqDemo
                 EqManager.ResultSetOptions))
             using (var fileStream = File.OpenWrite(fileName))
                 exporter.Export(resultSet, fileStream);
-            Process.Start(fileName);
+
+            new Process
+            {
+                StartInfo = new ProcessStartInfo(fileName)
+                {
+                    UseShellExecute = true
+                }
+            }.Start();
         }
 
         private void ShowExportPanel()
