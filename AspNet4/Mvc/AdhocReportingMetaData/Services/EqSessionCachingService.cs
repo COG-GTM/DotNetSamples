@@ -1,6 +1,4 @@
-﻿using System;
-using System.Web;
-using System.Web.SessionState;
+using Microsoft.AspNetCore.Http;
 
 using Korzh.EasyQuery.Services;
 
@@ -8,24 +6,21 @@ namespace EqDemo.Services
 {
     public class EqSessionCachingService : IEqCachingService
     {
-        /// <summary>
-        /// An instance of session object
-        /// </summary>
-        protected readonly HttpSessionState Session;
+        protected readonly ISession Session;
 
-        public EqSessionCachingService()
+        public EqSessionCachingService(IHttpContextAccessor httpContextAccessor)
         {
-            Session = HttpContext.Current.Session;
+            Session = httpContextAccessor.HttpContext.Session;
         }
 
         public string GetValue(string key)
         {
-            return (string)Session[key];
+            return Session.GetString(key);
         }
 
         public void PutValue(string key, string value)
         {
-            Session[key] = value;
+            Session.SetString(key, value);
         }
     }
 }
