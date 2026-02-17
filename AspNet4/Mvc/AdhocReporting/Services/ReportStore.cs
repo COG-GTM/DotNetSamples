@@ -1,17 +1,17 @@
-﻿using System;
+using System;
+using System.Security.Claims;
 using System.Security.Principal;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Data.Entity;
+using System.Threading;
 
-using Microsoft.AspNet.Identity;
+using Microsoft.EntityFrameworkCore;
 
 using Korzh.EasyQuery;
 using Korzh.EasyQuery.Services;
 
 using EqDemo.Models;
-using System.Threading;
 
 namespace EqDemo.Services
 {
@@ -35,15 +35,16 @@ namespace EqDemo.Services
                 query.Id = Guid.NewGuid().ToString();
             }
 
+            var userId = (User?.Identity as ClaimsIdentity)?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
             var report = new Report {
                 Id = query.Id,
                 Name = query.Name,
                 Description = query.Description,
                 ModelId = query.Model.Id,
                 QueryJson = await query.SaveToJsonStringAsync(),
-                OwnerId = User?.Identity.GetUserId()
+                OwnerId = userId
             };
-
 
             if (report.OwnerId == null) {
                 throw new ArgumentNullException(nameof(report.OwnerId));
@@ -63,7 +64,6 @@ namespace EqDemo.Services
             return reports.Select(r => new QueryListItem(r.Id, r.ModelId, r.Name, r.Description)).ToList();
         }
 
-
         public async Task<bool> LoadQueryAsync(Query query, string queryId, CancellationToken ct = default)
         {
             var report = await ApplyUserGuard(DbContext.Reports).FirstOrDefaultAsync(r => r.Id == queryId, ct);
@@ -71,10 +71,8 @@ namespace EqDemo.Services
             {
                 await query.LoadFromJsonStringAsync(report.QueryJson, ct);
                 query.Id = report.Id;
-
                 return true;
             }
-
             return false;
         }
 
@@ -84,10 +82,8 @@ namespace EqDemo.Services
             if (report != null) {
                 DbContext.Reports.Remove(report);
                 await DbContext.SaveChangesAsync();
-
                 return true;
             }
-
             return false;
         }
 
@@ -99,22 +95,19 @@ namespace EqDemo.Services
                 report.Description = query.Description;
                 report.ModelId = query.Model.Id;
                 report.QueryJson = await query.SaveToJsonStringAsync();
-
                 await DbContext.SaveChangesAsync();
-
                 return true;
             }
             else if (createIfNotExist)
             {
                 return await AddQueryAsync(query, ct);
             }
-
             return false;
         }
 
         private IQueryable<Report> ApplyUserGuard(IQueryable<Report> filter)
         {
-            var userId = User?.Identity.GetUserId();
+            var userId = (User?.Identity as ClaimsIdentity)?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             return filter.Where(r => r.OwnerId == userId);
         }
     }

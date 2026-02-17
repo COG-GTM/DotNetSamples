@@ -1,16 +1,14 @@
-﻿using System.Data.Entity;
+using Microsoft.EntityFrameworkCore;
 
 namespace EqDemo.Models
 {
     public class ApplicationDbContext : DbContext
     {
-        public ApplicationDbContext()
-            : base("DefaultConnection")
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+            : base(options)
         {
  
         }
-
-
 
         #region NWind
         public DbSet<Category> Categories { get; set; }
@@ -31,18 +29,13 @@ namespace EqDemo.Models
 
         #endregion
 
-        protected override void OnModelCreating(DbModelBuilder modelBuilder)
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
             modelBuilder.Entity<OrderDetail>()
                .ToTable("Order_Details")
                .HasKey(od => new { od.OrderID, od.ProductID });
-        }
-
-        public static ApplicationDbContext Create()
-        {
-            return new ApplicationDbContext();
         }
 
     }

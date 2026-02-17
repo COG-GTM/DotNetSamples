@@ -1,24 +1,87 @@
-﻿using Microsoft.Owin;
-using Owin;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
-using System.Data.Entity.Migrations;
+using Korzh.EasyQuery.Services;
+using Korzh.EasyQuery.Db;
 
-using EqDemo.Migrations;
+using EqDemo.Models;
+using EqDemo.Services;
 
-[assembly: OwinStartupAttribute(typeof(EqDemo.Startup))]
 namespace EqDemo
 {
-    public partial class Startup
+    public class Startup
     {
-        public void Configuration(IAppBuilder app)
+        public Startup(IConfiguration configuration)
         {
-            ConfigureAuth(app);
+            Configuration = configuration;
+            DbConnectionString = Configuration.GetConnectionString("DefaultConnection");
+        }
 
-            var databaseMigrator = new DbMigrator(new Configuration());
-            databaseMigrator.Update();
+        public IConfiguration Configuration { get; }
+        public string DbConnectionString { get; }
 
-            IdentityHelper.SeedEqManagerRole();
-            IdentityHelper.SeedDefaultUser();
+        public void ConfigureServices(IServiceCollection services)
+        {
+            services.AddDbContext<ApplicationDbContext>(
+                options => options.UseSqlServer(DbConnectionString)
+            );
+
+            services.AddIdentity<ApplicationUser, IdentityRole>(options => {
+                options.SignIn.RequireConfirmedAccount = false;
+            })
+            .AddEntityFrameworkStores<ApplicationDbContext>();
+
+            services.AddDistributedMemoryCache();
+            services.AddSession();
+
+            services.AddEasyQuery()
+                    .UseSqlManager()
+                    .AddDefaultExporters()
+                    .RegisterDbGate<Korzh.EasyQuery.DbGates.SqlServerGate>();
+
+            services.AddControllersWithViews();
+            services.AddRazorPages();
+        }
+
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        {
+            if (env.IsDevelopment()) {
+                app.UseDeveloperExceptionPage();
+            }
+            else {
+                app.UseExceptionHandler("/Home/Error");
+                app.UseHsts();
+            }
+
+            app.UseHttpsRedirection();
+            app.UseStaticFiles();
+            app.UseRouting();
+
+            app.UseAuthentication();
+            app.UseAuthorization();
+            app.UseSession();
+
+            app.UseEndpoints(endpoints => {
+                endpoints.MapEasyQuery(options => {
+                    options.DefaultModelId = "adhoc-reporting";
+                    options.StoreModelInCache = true;
+                    options.StoreQueryInCache = true;
+                    options.SaveNewQuery = true;
+                    options.ConnectionString = DbConnectionString;
+                    options.UseDbContext<ApplicationDbContext>();
+                    options.UseQueryStore((_) => new FileQueryStore("App_Data"));
+                });
+
+                endpoints.MapControllerRoute(
+                    name: "default",
+                    pattern: "{controller=Home}/{action=Index}/{id?}");
+                endpoints.MapRazorPages();
+            });
         }
     }
 }

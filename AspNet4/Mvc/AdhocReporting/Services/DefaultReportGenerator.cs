@@ -1,8 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 
-using Microsoft.AspNet.Identity.EntityFramework;
+using Microsoft.AspNetCore.Identity;
 
 using Newtonsoft.Json.Linq;
 
@@ -17,10 +17,10 @@ namespace EqDemo.Services
 
         private const string _modelId = "adhoc-reporting";
 
-        public DefaultReportGenerator(ApplicationDbContext dbContext)
+        public DefaultReportGenerator(ApplicationDbContext dbContext, string dataPath)
         {
             _dbContext = dbContext;
-            _dataPath = Path.Combine(System.Web.Hosting.HostingEnvironment.MapPath("~/App_Data"), "Seed");
+            _dataPath = Path.Combine(dataPath, "Seed");
         }
 
         public void Generate(IdentityUser user)
@@ -45,7 +45,6 @@ namespace EqDemo.Services
             }
 
             _dbContext.SaveChanges();
-
         }
 
         private IEnumerable<string> GetReportJsons()

@@ -1,11 +1,13 @@
-﻿using System.Data.Entity;
+using System.Configuration;
+
+using Microsoft.EntityFrameworkCore;
 
 namespace EqDemo.Models
 {
     public class ApplicationDbContext : DbContext
     {
         public ApplicationDbContext()
-            : base("DefaultConnection")
+            : base()
         {
  
         }
@@ -31,7 +33,13 @@ namespace EqDemo.Models
 
         #endregion
 
-        protected override void OnModelCreating(DbModelBuilder modelBuilder)
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            var connectionString = ConfigurationManager.ConnectionStrings["DefaultConnection"]?.ToString();
+            optionsBuilder.UseSqlServer(connectionString);
+        }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 

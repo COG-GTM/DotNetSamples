@@ -1,8 +1,7 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Configuration;
 using System.Data;
-using System.Data.Entity.Migrations;
 using System.IO;
 using System.Windows.Forms;
 
@@ -12,7 +11,7 @@ using EasyData.Export;
 
 using Korzh.EasyQuery;
 using Korzh.EasyQuery.Db;
-using Korzh.EasyQuery.EntityFramework;
+using Korzh.EasyQuery.EntityFrameworkCore.Relational;
 using Korzh.EasyQuery.Services;
 using Korzh.EasyQuery.WinForms;
 
@@ -132,8 +131,9 @@ namespace EqDemo
                     var connectionString = ConfigurationManager.ConnectionStrings["DefaultConnection"]?.ToString();
                     _connection = new SqlConnection(connectionString);
 
-                    var migrator = new DbMigrator(new EqDemo.Migrations.Configuration());
-                    migrator.Update();
+                    using (var dbContext = ApplicationDbContext.Create()) {
+                        dbContext.Database.EnsureCreated();
+                    }
                 }
                 catch (Exception ex) {
                     MessageBox.Show(ex.Message);
