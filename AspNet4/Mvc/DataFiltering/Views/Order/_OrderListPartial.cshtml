@@ -1,6 +1,4 @@
-@using EqDemo.Models
-@using Korzh.EasyQuery.AspNet
-@model Korzh.EasyQuery.Services.IPagedList<Order>
+@model Korzh.EasyQuery.Services.IPagedList<EqDemo.Models.Order>
 @{
     Layout = null;
 }
@@ -33,13 +31,13 @@
                 @(item.OrderDate != null ? item.OrderDate.Value.ToString("yyyy-MM-dd") : "")
             </td>
             <td>
-                @Html.EqHighLightFor(item.Customer?.CompanyName ?? "", (string)@ViewBag.Text)
+                <eq-highlight-text value="@item.Customer?.CompanyName" text="@ViewData["Text"]"></eq-highlight-text>
             </td>
             <td>
-                @Html.EqHighLightFor(item.Customer?.Country ?? "", (string)@ViewBag.Text)
+                <eq-highlight-text value="@item.Customer?.Country" text="@ViewData["Text"]"></eq-highlight-text>
             </td>
             <td>
-                @Html.EqHighLightFor(item.Employee.FullName, (string)@ViewBag.Text)
+                <eq-highlight-text value="@item.Employee.FullName" text="@ViewData["Text"]"></eq-highlight-text>
             </td>
 
             <td>
@@ -53,7 +51,7 @@
 
 <div class="row">
     <div class="col-md-8">
-        @Html.PageNavigator(Model)
+        <eq-page-navigator paging="Model" />
     </div>
     <div class="col-md-4">
         @{

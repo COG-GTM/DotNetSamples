@@ -31,10 +31,9 @@ namespace EqDemo
                 options => options.UseSqlServer(DbConnectionString)
             );
 
-            services.AddDefaultIdentity<ApplicationUser>(options => {
+            services.AddIdentity<ApplicationUser, IdentityRole>(options => {
                 options.SignIn.RequireConfirmedAccount = false;
             })
-            .AddRoles<IdentityRole>()
             .AddEntityFrameworkStores<ApplicationDbContext>();
 
             services.AddDistributedMemoryCache();
@@ -71,7 +70,7 @@ namespace EqDemo
                 endpoints.MapEasyQuery(options => {
                     options.DefaultModelId = "adhoc-reporting";
                     options.StoreModelInCache = true;
-                    options.UseSessionCache();
+                    options.StoreQueryInCache = true;
                     options.SaveNewQuery = true;
                     options.ConnectionString = DbConnectionString;
                     options.UseDbContext<ApplicationDbContext>();

@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 using Korzh.EasyQuery.Services;
 using Korzh.EasyQuery.Linq;
+using Korzh.EasyQuery.AspNetCore;
 
 using EqDemo.Models;
 
@@ -20,14 +21,19 @@ namespace EqDemo.Controllers
         EasyQueryManagerLinq<Order> _eqManager;
         ApplicationDbContext _dbContext;
 
-        public OrderController(ApplicationDbContext dbContext)
+        public OrderController(IServiceProvider services, ApplicationDbContext dbContext)
         {
             _dbContext = dbContext;
 
             var options = new EasyQueryOptions();
-            options.UseEntity((_) => _dbContext.Orders);
+            options.UseEntity((_) =>
+                _dbContext
+                    .Orders
+                    .Include(o => o.Customer)
+                    .Include(o => o.Employee)
+                    .AsQueryable());
 
-            _eqManager = new EasyQueryManagerLinq<Order>(options);
+            _eqManager = new EasyQueryManagerLinq<Order>(options, services);
         }
 
         [HttpGet]
@@ -42,7 +48,7 @@ namespace EqDemo.Controllers
         public async Task<IActionResult> GetModelAsync(string modelId)
         {
             var model = await _eqManager.GetModelAsync(modelId);
-            return Ok(new { model });
+            return this.EqOk(new { Model = model });
         }
 
         [HttpGet]
@@ -50,16 +56,14 @@ namespace EqDemo.Controllers
         public async Task<IActionResult> GetList(string modelId, string editorId)
         {
             var list = await _eqManager.GetValueListAsync(modelId, editorId);
-            return Ok(new { values = list });
+            return this.EqOk(new { Values = list });
         }
 
         [HttpPost]
         [Route("models/{modelId}/fetch")]
         public async Task<IActionResult> ApplyQueryFilter(string modelId)
         {
-            using var reader = new StreamReader(Request.Body);
-            var body = await reader.ReadToEndAsync();
-            await _eqManager.ReadRequestContentFromStringAsync(modelId, body);
+            await _eqManager.ReadRequestContentFromStreamAsync(modelId, Request.Body);
 
             var orders = _dbContext.Orders
                       .Include(o => o.Customer)
