@@ -1,7 +1,25 @@
 ﻿@page "/authentication/{action}"
-@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
-<RemoteAuthenticatorView Action="@Action" />
+
+@inject NavigationManager Navigation
 
 @code{
     [Parameter] public string? Action { get; set; }
+
+    protected override void OnInitialized()
+    {
+        var returnUrl = Uri.EscapeDataString(Navigation.BaseUri);
+        var redirectUrl = Action?.ToLower() switch
+        {
+            "login" => $"Identity/Account/Login?returnUrl={returnUrl}",
+            "register" => $"Identity/Account/Register?returnUrl={returnUrl}",
+            "logout" => "Identity/Account/LogOut",
+            "profile" => "Identity/Account/Manage",
+            _ => ""
+        };
+
+        if (!string.IsNullOrEmpty(redirectUrl))
+        {
+            Navigation.NavigateTo(redirectUrl, forceLoad: true);
+        }
+    }
 }
