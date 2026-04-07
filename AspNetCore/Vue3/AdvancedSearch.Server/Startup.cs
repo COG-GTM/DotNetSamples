@@ -74,6 +74,7 @@ namespace EqDemo
             app.UseCors("AllowAllPolicy");
 
             app.UseHttpsRedirection();
+            app.UseDefaultFiles();
             app.UseStaticFiles();
             //if (!env.IsDevelopment()) {
             //    app.UseSpaStaticFiles();
@@ -106,6 +107,7 @@ namespace EqDemo
 
                 endpoints.MapRazorPages();
                 endpoints.MapControllers();
+                endpoints.MapFallbackToFile("index.html");
             });
 
             //app.UseSpa(spa => {
