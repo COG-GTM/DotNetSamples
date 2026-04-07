@@ -104,10 +104,12 @@ namespace EqDemo
                     name: "default",
                     pattern: "{controller}/{action=Index}/{id?}");
 
-                endpoints.MapFallbackToFile("index.html", new StaticFileOptions {
-                    FileProvider = new PhysicalFileProvider(
-                        Path.Combine(env.ContentRootPath, "ClientApp", "dist"))
-                });
+                if (Directory.Exists(Path.Combine(env.ContentRootPath, "ClientApp", "dist"))) {
+                    endpoints.MapFallbackToFile("index.html", new StaticFileOptions {
+                        FileProvider = new PhysicalFileProvider(
+                            Path.Combine(env.ContentRootPath, "ClientApp", "dist"))
+                    });
+                }
             });
 
             //Init demo database (if necessary)
