@@ -1,14 +1,11 @@
 ﻿@page "/reports"
 @using Microsoft.AspNetCore.Authorization
-@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
-@using Microsoft.AspNetCore.Components.WebAssembly.Authentication.Internal
 @attribute [Authorize]
 @implements IAsyncDisposable
 
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
-@inject IAccessTokenProviderAccessor AccessTokenProviderAccessor
 
 <style>
     .eqv-chart-panel {
@@ -122,13 +119,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender) {
-            var result = await AccessTokenProviderAccessor.TokenProvider.RequestAccessToken();
-            if (result.Status == AccessTokenResultStatus.Success && result.TryGetToken(out var token)) {
-                await JSRuntime.InvokeVoidAsync("easyquery.blazor.startAdhocReporting", token.Value);
-            }
-            else {
-                await JSRuntime.InvokeVoidAsync("consloe.error", "Unable to get access token");
-            }
+            await JSRuntime.InvokeVoidAsync("easyquery.blazor.startAdhocReporting", null);
         }
 
         await base.OnAfterRenderAsync(firstRender);
