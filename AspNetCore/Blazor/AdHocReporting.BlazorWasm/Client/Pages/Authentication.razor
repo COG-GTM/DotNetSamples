@@ -7,7 +7,7 @@
 
     protected override void OnInitialized()
     {
-        var returnUrl = Uri.EscapeDataString(Navigation.BaseUri);
+        var returnUrl = Uri.EscapeDataString("/");
         var redirectUrl = Action?.ToLower() switch
         {
             "login" => $"Identity/Account/Login?returnUrl={returnUrl}",
