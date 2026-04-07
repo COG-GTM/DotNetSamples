@@ -1,13 +1,13 @@
 using System;
+using System.IO;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
-
-using VueCliMiddleware;
 
 using Korzh.EasyQuery.Services;
 using EasyData.Export;
@@ -44,12 +44,6 @@ namespace EqDemo
 
             services.AddControllersWithViews();
 
-            // In production, the React files will be served from this directory
-            services.AddSpaStaticFiles(configuration =>
-            {
-                configuration.RootPath = "ClientApp/dist";
-            });
-
             services.AddEasyQuery()
                     .UseSqlManager()
                     .AddDefaultExporters()
@@ -77,10 +71,16 @@ namespace EqDemo
             app.UseCors("AllowAllPolicy");
 
             app.UseHttpsRedirection();
-            app.UseStaticFiles();
-            if (!env.IsDevelopment()) {
-                app.UseSpaStaticFiles();
+
+            // Serve Vue SPA build output from ClientApp/dist in production
+            var spaPath = Path.Combine(env.ContentRootPath, "ClientApp", "dist");
+            if (Directory.Exists(spaPath)) {
+                var fileProvider = new PhysicalFileProvider(spaPath);
+                app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = fileProvider });
+                app.UseStaticFiles(new StaticFileOptions { FileProvider = fileProvider });
             }
+
+            app.UseStaticFiles();
 
        
             app.UseRouting();
@@ -103,23 +103,14 @@ namespace EqDemo
                 endpoints.MapControllerRoute(
                     name: "default",
                     pattern: "{controller}/{action=Index}/{id?}");
-            });
 
-            app.UseSpa(spa =>
-            {
-                spa.Options.SourcePath = "ClientApp";
-                spa.Options.StartupTimeout = TimeSpan.FromMinutes(2);
-
-                if (env.IsDevelopment())
-                {
-                    // run npm process with client app
-                    spa.UseVueCli(npmScript: "serve", port: 8085, regex: "Compiled ");
-                    // if you just prefer to proxy requests from client app, use proxy to SPA dev server instead:
-                    // app should be already running before starting a .NET client
-                    // spa.UseProxyToSpaDevelopmentServer("http://localhost:8080"); // your Vue app port
+                if (Directory.Exists(Path.Combine(env.ContentRootPath, "ClientApp", "dist"))) {
+                    endpoints.MapFallbackToFile("index.html", new StaticFileOptions {
+                        FileProvider = new PhysicalFileProvider(
+                            Path.Combine(env.ContentRootPath, "ClientApp", "dist"))
+                    });
                 }
             });
-
 
             //Init demo database (if necessary)
             app.EnsureDbInitialized(Configuration, env);
