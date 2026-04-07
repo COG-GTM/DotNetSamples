@@ -7,8 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
 
-using VueCliMiddleware;
-
 using Korzh.EasyQuery.Services;
 using EasyData.Export;
 
@@ -44,12 +42,6 @@ namespace EqDemo
 
             services.AddControllersWithViews();
 
-            // In production, the React files will be served from this directory
-            services.AddSpaStaticFiles(configuration =>
-            {
-                configuration.RootPath = "ClientApp/dist";
-            });
-
             services.AddEasyQuery()
                     .UseSqlManager()
                     .AddDefaultExporters()
@@ -77,10 +69,8 @@ namespace EqDemo
             app.UseCors("AllowAllPolicy");
 
             app.UseHttpsRedirection();
+            app.UseDefaultFiles();
             app.UseStaticFiles();
-            if (!env.IsDevelopment()) {
-                app.UseSpaStaticFiles();
-            }
 
        
             app.UseRouting();
@@ -103,23 +93,9 @@ namespace EqDemo
                 endpoints.MapControllerRoute(
                     name: "default",
                     pattern: "{controller}/{action=Index}/{id?}");
+
+                endpoints.MapFallbackToFile("index.html");
             });
-
-            app.UseSpa(spa =>
-            {
-                spa.Options.SourcePath = "ClientApp";
-                spa.Options.StartupTimeout = TimeSpan.FromMinutes(2);
-
-                if (env.IsDevelopment())
-                {
-                    // run npm process with client app
-                    spa.UseVueCli(npmScript: "serve", port: 8085, regex: "Compiled ");
-                    // if you just prefer to proxy requests from client app, use proxy to SPA dev server instead:
-                    // app should be already running before starting a .NET client
-                    // spa.UseProxyToSpaDevelopmentServer("http://localhost:8080"); // your Vue app port
-                }
-            });
-
 
             //Init demo database (if necessary)
             app.EnsureDbInitialized(Configuration, env);
