@@ -1,9 +1,11 @@
+using System.IO;
 using System.Data.SqlClient;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
 
@@ -70,8 +72,14 @@ namespace EqDemo
             }
 
             app.UseHttpsRedirection();
-            app.UseDefaultFiles();
-            app.UseStaticFiles();
+
+            var spaPath = Path.Combine(env.ContentRootPath, "ClientApp/www");
+            if (Directory.Exists(spaPath))
+            {
+                var fileProvider = new PhysicalFileProvider(spaPath);
+                app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = fileProvider });
+                app.UseStaticFiles(new StaticFileOptions { FileProvider = fileProvider });
+            }
 
             app.UseCors("AllowAllPolicy");
 
@@ -104,7 +112,14 @@ namespace EqDemo
                     name: "default",
                     pattern: "{controller}/{action=Index}/{id?}");
 
-                endpoints.MapFallbackToFile("index.html");
+                var fallbackSpaPath = Path.Combine(env.ContentRootPath, "ClientApp/www");
+                if (Directory.Exists(fallbackSpaPath))
+                {
+                    endpoints.MapFallbackToFile("index.html", new StaticFileOptions
+                    {
+                        FileProvider = new PhysicalFileProvider(fallbackSpaPath)
+                    });
+                }
             });
 
             //Init demo database (if necessary)
