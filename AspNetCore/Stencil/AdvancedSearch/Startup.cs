@@ -51,11 +51,6 @@ namespace EqDemo
             // .RegisterDbGate<SqLiteGate>();
             // .RegisterDbGate<SqlServerGate>();
 
-            services.AddSpaStaticFiles(configuration =>
-            {
-                configuration.RootPath = "ClientApp/www";
-            });
-
             //to support non-Unicode code pages in PDF Exporter
             System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
         }
@@ -75,8 +70,8 @@ namespace EqDemo
             }
 
             app.UseHttpsRedirection();
+            app.UseDefaultFiles();
             app.UseStaticFiles();
-            app.UseSpaStaticFiles();
 
             app.UseCors("AllowAllPolicy");
 
@@ -108,15 +103,8 @@ namespace EqDemo
                 endpoints.MapControllerRoute(
                     name: "default",
                     pattern: "{controller}/{action=Index}/{id?}");
-            });
 
-            app.UseSpa(spa =>
-            {
-                spa.Options.SourcePath = "ClientApp";
-
-                if (env.IsDevelopment()) {
-                    spa.UseProxyToSpaDevelopmentServer("http://localhost:4444/");
-                }
+                endpoints.MapFallbackToFile("index.html");
             });
 
             //Init demo database (if necessary)
