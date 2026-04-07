@@ -6,12 +6,17 @@
     <Authorized>
         <span>Hello, @context.User.Identity?.Name!</span>
         <a href="Identity/Account/Manage">Manage</a>
-        <form method="post" action="Identity/Account/LogOut">
-            <button type="submit" class="nav-link btn btn-link">Log out</button>
-        </form>
+        <button class="nav-link btn btn-link" @onclick="BeginSignOut">Log out</button>
     </Authorized>
     <NotAuthorized>
         <a href="Identity/Account/Register">Register</a>
         <a href="Identity/Account/Login">Log in</a>
     </NotAuthorized>
 </AuthorizeView>
+
+@code{
+    private void BeginSignOut()
+    {
+        Navigation.NavigateTo("Identity/Account/LogOut", forceLoad: true);
+    }
+}
