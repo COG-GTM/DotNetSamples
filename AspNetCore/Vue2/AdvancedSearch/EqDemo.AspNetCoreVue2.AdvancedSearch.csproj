@@ -6,7 +6,7 @@
     <DefaultItemExcludes>$(DefaultItemExcludes);$(SpaRoot)node_modules\**</DefaultItemExcludes>
     <UserSecretsId>EqDemo.AspNetCoreVue.AdvancedSearch</UserSecretsId>
     <TypeScriptCompileBlocked>true</TypeScriptCompileBlocked>
-    <SpaProxyLaunchCommand>npm run serve</SpaProxyLaunchCommand>
+    <SpaProxyLaunchCommand>npm run serve -- --port 8085</SpaProxyLaunchCommand>
     <SpaProxyServerUrl>http://localhost:8085</SpaProxyServerUrl>
   </PropertyGroup>
   <ItemGroup>
