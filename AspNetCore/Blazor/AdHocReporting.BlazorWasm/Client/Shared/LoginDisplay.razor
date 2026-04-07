@@ -5,16 +5,31 @@
 <AuthorizeView>
     <Authorized>
         <span>Hello, @context.User.Identity?.Name!</span>
-        <a href="Identity/Account/Manage">Manage</a>
+        <button class="nav-link btn btn-link" @onclick="NavigateToManage">Manage</button>
         <button class="nav-link btn btn-link" @onclick="BeginSignOut">Log out</button>
     </Authorized>
     <NotAuthorized>
-        <a href="Identity/Account/Register">Register</a>
-        <a href="Identity/Account/Login">Log in</a>
+        <button class="nav-link btn btn-link" @onclick="NavigateToRegister">Register</button>
+        <button class="nav-link btn btn-link" @onclick="NavigateToLogin">Log in</button>
     </NotAuthorized>
 </AuthorizeView>
 
 @code{
+    private void NavigateToManage()
+    {
+        Navigation.NavigateTo("Identity/Account/Manage", forceLoad: true);
+    }
+
+    private void NavigateToRegister()
+    {
+        Navigation.NavigateTo("Identity/Account/Register", forceLoad: true);
+    }
+
+    private void NavigateToLogin()
+    {
+        Navigation.NavigateTo("Identity/Account/Login", forceLoad: true);
+    }
+
     private void BeginSignOut()
     {
         Navigation.NavigateTo("Identity/Account/LogOut", forceLoad: true);
