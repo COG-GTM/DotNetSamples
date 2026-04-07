@@ -1,9 +1,11 @@
+using System.IO;
 using System.Data.SqlClient;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
 
@@ -51,11 +53,6 @@ namespace EqDemo
             // .RegisterDbGate<SqLiteGate>();
             // .RegisterDbGate<SqlServerGate>();
 
-            services.AddSpaStaticFiles(configuration =>
-            {
-                configuration.RootPath = "ClientApp/www";
-            });
-
             //to support non-Unicode code pages in PDF Exporter
             System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
         }
@@ -75,8 +72,14 @@ namespace EqDemo
             }
 
             app.UseHttpsRedirection();
-            app.UseStaticFiles();
-            app.UseSpaStaticFiles();
+
+            var spaPath = Path.Combine(env.ContentRootPath, "ClientApp/www");
+            if (Directory.Exists(spaPath))
+            {
+                var fileProvider = new PhysicalFileProvider(spaPath);
+                app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = fileProvider });
+                app.UseStaticFiles(new StaticFileOptions { FileProvider = fileProvider });
+            }
 
             app.UseCors("AllowAllPolicy");
 
@@ -108,14 +111,14 @@ namespace EqDemo
                 endpoints.MapControllerRoute(
                     name: "default",
                     pattern: "{controller}/{action=Index}/{id?}");
-            });
 
-            app.UseSpa(spa =>
-            {
-                spa.Options.SourcePath = "ClientApp";
-
-                if (env.IsDevelopment()) {
-                    spa.UseProxyToSpaDevelopmentServer("http://localhost:4444/");
+                var fallbackSpaPath = Path.Combine(env.ContentRootPath, "ClientApp/www");
+                if (Directory.Exists(fallbackSpaPath))
+                {
+                    endpoints.MapFallbackToFile("index.html", new StaticFileOptions
+                    {
+                        FileProvider = new PhysicalFileProvider(fallbackSpaPath)
+                    });
                 }
             });
 
