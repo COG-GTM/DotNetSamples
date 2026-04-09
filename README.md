@@ -120,3 +120,5 @@ The sample database is created in your SQL Express LocalDB instance by default. 
 * [EasyQuery home page](https://korzh.com/easyquery)
 * [EasyQuery documentation](https://korzh.com/easyquery/docs)
 * [EasyQuery live demo](http://korzh.com/demo)
+
+<!-- Integration test: validated Devin push access 2026-04-09T00:57:03Z -->
