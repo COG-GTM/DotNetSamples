@@ -17,7 +17,7 @@
     "@easydata/ui": "1.5.8",
     "@easyquery/core": "7.4.0",
     "@easyquery/ui": "7.4.0",
-    "@easyquery/enterprise": "7.4.0"
+    "@easyquery/enterprise": "7.4.1"
   },
   "license": "MIT",
   "devDependencies": {
