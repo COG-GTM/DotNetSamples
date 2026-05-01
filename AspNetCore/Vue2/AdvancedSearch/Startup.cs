@@ -7,8 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
 
-using VueCliMiddleware;
-
 using Korzh.EasyQuery.Services;
 using EasyData.Export;
 
@@ -112,11 +110,7 @@ namespace EqDemo
 
                 if (env.IsDevelopment())
                 {
-                    // run npm process with client app
-                    spa.UseVueCli(npmScript: "serve", port: 8085, regex: "Compiled ");
-                    // if you just prefer to proxy requests from client app, use proxy to SPA dev server instead:
-                    // app should be already running before starting a .NET client
-                    // spa.UseProxyToSpaDevelopmentServer("http://localhost:8080"); // your Vue app port
+                    spa.UseProxyToSpaDevelopmentServer("http://localhost:8085");
                 }
             });
 
