@@ -5,7 +5,11 @@
     <TypeScriptToolsVersion>Latest</TypeScriptToolsVersion>
     <IsPackable>false</IsPackable>
     <SpaRoot>ClientApp\</SpaRoot>
-    <SpaProxyServerUrl>https://localhost:44464</SpaProxyServerUrl>
+    <!-- ClientApp uses Create React App; `npm start` runs `react-scripts start`,
+         which serves on http://localhost:3000 by default. SpaProxyServerUrl must
+         match that URL so Microsoft.AspNetCore.SpaProxy can detect when the dev
+         server is ready. -->
+    <SpaProxyServerUrl>http://localhost:3000</SpaProxyServerUrl>
     <SpaProxyLaunchCommand>npm start</SpaProxyLaunchCommand>
     <DefaultItemExcludes>$(DefaultItemExcludes);$(SpaRoot)node_modules\**</DefaultItemExcludes>
     <UserSecretsId>EqDemo.AspNetCoreReact.AdvancedSearch</UserSecretsId>
