@@ -2,11 +2,11 @@
 
 <AuthorizeView>
     <Authorized>
-        <a href="Identity/Account/Manage">Hello, @context.User.Identity?.Name!</a>
-        <a href="Identity/Account/Logout" class="nav-link btn btn-link">Log out</a>
+        <a href="authentication/profile">Hello, @context.User.Identity?.Name!</a>
+        <a href="authentication/logout" class="nav-link btn btn-link">Log out</a>
     </Authorized>
     <NotAuthorized>
-        <a href="Identity/Account/Register">Register</a>
-        <a href="Identity/Account/Login">Log in</a>
+        <a href="authentication/register">Register</a>
+        <a href="authentication/login">Log in</a>
     </NotAuthorized>
 </AuthorizeView>
