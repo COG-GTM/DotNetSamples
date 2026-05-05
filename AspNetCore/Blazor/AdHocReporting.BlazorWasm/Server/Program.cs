@@ -1,5 +1,3 @@
-using System.IdentityModel.Tokens.Jwt;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,18 +27,12 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(opts => {
 .AddRoles<IdentityRole>()
 .AddEntityFrameworkStores<AppDbContext>();
 
-builder.Services.AddIdentityServer()
-    .AddApiAuthorization<ApplicationUser, AppDbContext>(options => {
-        //the following 2 lines are necessary to support roles on the WebAssembly side
-        options.IdentityResources["openid"].UserClaims.Add("role");
-        options.ApiResources.Single().UserClaims.Add("role");
-    });
-
-// We need to do this as it maps "role" to ClaimTypes.Role and causes issues
-JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Remove("role");
-
-builder.Services.AddAuthentication()
-    .AddIdentityServerJwt();
+// Override the role-blind UserClaimsPrincipalFactory<TUser> that AddDefaultIdentity
+// pre-registers so the chained AddRoles<IdentityRole>() actually projects role
+// claims into the auth cookie's ClaimsPrincipal. Without this the IUserClaimsPrincipalFactory<>
+// registration from AddIdentityCore wins (TryAddScoped) and User.IsInRole(...) is always false.
+builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>,
+    UserClaimsPrincipalFactory<ApplicationUser, IdentityRole>>();
 
 //EasyQuery services
 builder.Services.AddEasyQuery()
@@ -79,7 +71,6 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
-app.UseIdentityServer();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -118,6 +109,19 @@ app.MapEasyQuery(options => {
 
 app.MapRazorPages();
 app.MapControllers();
+
+// Lightweight endpoint used by the Blazor WASM client's HostAuthenticationStateProvider
+// to project the cookie-authenticated user's claims back to the WebAssembly process.
+app.MapGet("/_auth/me", (HttpContext ctx) =>
+{
+    var user = ctx.User;
+    var isAuthenticated = user?.Identity?.IsAuthenticated == true;
+    var claims = isAuthenticated
+        ? user!.Claims.Select(c => new { Type = c.Type, Value = c.Value }).ToArray()
+        : Array.Empty<object>();
+    return Results.Ok(new { IsAuthenticated = isAuthenticated, Claims = claims });
+});
+
 app.MapFallbackToFile("index.html");
 
 //Init demo database (if necessary)

@@ -1,7 +1,23 @@
 ﻿@page "/authentication/{action}"
-@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
-<RemoteAuthenticatorView Action="@Action" />
+@inject NavigationManager Navigation
 
-@code{
+@code {
     [Parameter] public string? Action { get; set; }
+
+    protected override void OnInitialized()
+    {
+        // The legacy OIDC client-side authentication flow has been replaced with
+        // server-side cookie auth via ASP.NET Core Identity Razor Pages. Redirect
+        // legacy /authentication/{action} URLs to the new endpoints.
+        var target = Action switch
+        {
+            "login" => "Identity/Account/Login",
+            "register" => "Identity/Account/Register",
+            "logout" => "Identity/Account/Logout",
+            "profile" => "Identity/Account/Manage",
+            _ => "/"
+        };
+
+        Navigation.NavigateTo(target, forceLoad: true);
+    }
 }
