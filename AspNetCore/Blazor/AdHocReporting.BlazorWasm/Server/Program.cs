@@ -27,6 +27,13 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(opts => {
 .AddRoles<IdentityRole>()
 .AddEntityFrameworkStores<AppDbContext>();
 
+// Override the role-blind UserClaimsPrincipalFactory<TUser> that AddDefaultIdentity
+// pre-registers so the chained AddRoles<IdentityRole>() actually projects role
+// claims into the auth cookie's ClaimsPrincipal. Without this the IUserClaimsPrincipalFactory<>
+// registration from AddIdentityCore wins (TryAddScoped) and User.IsInRole(...) is always false.
+builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>,
+    UserClaimsPrincipalFactory<ApplicationUser, IdentityRole>>();
+
 //EasyQuery services
 builder.Services.AddEasyQuery()
         .UseSqlManager()
