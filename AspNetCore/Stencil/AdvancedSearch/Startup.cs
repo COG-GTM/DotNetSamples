@@ -100,6 +100,8 @@ namespace EqDemo
                 endpoints.MapControllerRoute(
                     name: "default",
                     pattern: "{controller}/{action=Index}/{id?}");
+
+                endpoints.MapFallbackToFile("index.html");
             });
 
             //Init demo database (if necessary)
