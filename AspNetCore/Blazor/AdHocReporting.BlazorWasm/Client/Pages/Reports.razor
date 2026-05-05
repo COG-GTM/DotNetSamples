@@ -1,14 +1,11 @@
 ﻿@page "/reports"
 @using Microsoft.AspNetCore.Authorization
-@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
-@using Microsoft.AspNetCore.Components.WebAssembly.Authentication.Internal
 @attribute [Authorize]
 @implements IAsyncDisposable
 
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
-@inject IAccessTokenProviderAccessor AccessTokenProviderAccessor
 
 <style>
     .eqv-chart-panel {
@@ -122,13 +119,10 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender) {
-            var result = await AccessTokenProviderAccessor.TokenProvider.RequestAccessToken();
-            if (result.Status == AccessTokenResultStatus.Success && result.TryGetToken(out var token)) {
-                await JSRuntime.InvokeVoidAsync("easyquery.blazor.startAdhocReporting", token.Value);
-            }
-            else {
-                await JSRuntime.InvokeVoidAsync("consloe.error", "Unable to get access token");
-            }
+            // With cookie auth the browser sends the auth cookie automatically with
+            // every same-origin request, so no bearer token has to be passed to the
+            // EasyQuery JS bootstrap.
+            await JSRuntime.InvokeVoidAsync("easyquery.blazor.startAdhocReporting", string.Empty);
         }
 
         await base.OnAfterRenderAsync(firstRender);

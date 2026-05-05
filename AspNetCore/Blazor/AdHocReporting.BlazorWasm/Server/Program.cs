@@ -102,6 +102,19 @@ app.MapEasyQuery(options => {
 
 app.MapRazorPages();
 app.MapControllers();
+
+// Lightweight endpoint used by the Blazor WASM client's HostAuthenticationStateProvider
+// to project the cookie-authenticated user's claims back to the WebAssembly process.
+app.MapGet("/_auth/me", (HttpContext ctx) =>
+{
+    var user = ctx.User;
+    var isAuthenticated = user?.Identity?.IsAuthenticated == true;
+    var claims = isAuthenticated
+        ? user!.Claims.Select(c => new { Type = c.Type, Value = c.Value }).ToArray()
+        : Array.Empty<object>();
+    return Results.Ok(new { IsAuthenticated = isAuthenticated, Claims = claims });
+});
+
 app.MapFallbackToFile("index.html");
 
 //Init demo database (if necessary)
