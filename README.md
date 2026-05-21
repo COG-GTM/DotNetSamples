@@ -1,6 +1,6 @@
 # EasyQuery ASP.NET Core Samples
 
-This repository contains several ASP.NET Core 2.x and 3.0 projects which demonstrate how to use [EasyQuery library](https://korzh.com/easyquery) in different web-application scenarios.
+This repository contains several ASP.NET Core projects which demonstrate how to use [EasyQuery library](https://korzh.com/easyquery) in different web-application scenarios.
 
 ## EasyQuery packages
 
@@ -19,7 +19,8 @@ This repository contains several ASP.NET Core 2.x and 3.0 projects which demonst
 
 To run these samples you will need:
 
-* [.NET Core 2.0](https://www.microsoft.com/net/core)
+* [.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) (for ASP.NET Core, WPF, and WinForms projects)
+* [.NET Framework 4.x](https://dotnet.microsoft.com/download/dotnet-framework) (for ASP.NET 4 projects only)
 * [SQL Server Express LocalDB](https://www.microsoft.com/en-us/sql-server/sql-server-editions-express) (it's installed automatically with Visual Studio)
 * Node.js (to run Angular, Vue or React projects)
 * Visual Studio 2017 or higher (optional)

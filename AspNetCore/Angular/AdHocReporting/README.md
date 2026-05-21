@@ -5,7 +5,7 @@
 
 This samples consists of two projects: 
 
-* AdHocReporting.Server.csproj - the backend web-service app that runs on ASP.NET Core 8.0
+* AdHocReporting.Server.csproj - the backend web-service app that runs on ASP.NET Core 9.0
 * AdHocReporting.Server.csproj - the client-side Angular 18 application
 
 To start the sample you will need to run both of these two projects.
