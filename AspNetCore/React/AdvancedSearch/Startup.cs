@@ -10,6 +10,8 @@ using Microsoft.EntityFrameworkCore;
 
 using Korzh.EasyQuery.Services;
 using EasyData.Export;
+using Temporalio.Extensions.Hosting;
+using EqDemo.Workflows;
 
 namespace EqDemo
 {
@@ -48,6 +50,15 @@ namespace EqDemo
             {
                 configuration.RootPath = "ClientApp/build";
             });
+
+            services.AddTemporalClient(clientOptions => {
+                clientOptions.TargetHost = Configuration.GetValue<string>("Temporal:TargetHost") ?? "localhost:7233";
+                clientOptions.Namespace = Configuration.GetValue<string>("Temporal:Namespace") ?? "default";
+            });
+
+            services.AddHostedTemporalWorker("advanced-search-task-queue")
+                .AddScopedActivities<WeatherActivities>()
+                .AddWorkflow<WeatherWorkflow>();
 
             services.AddEasyQuery()
                     .UseSqlManager()
