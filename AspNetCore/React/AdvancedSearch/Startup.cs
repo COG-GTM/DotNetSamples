@@ -1,8 +1,5 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.HttpsPolicy;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SpaServices.ReactDevelopmentServer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -43,12 +40,6 @@ namespace EqDemo
 
             services.AddControllersWithViews();
 
-            // In production, the React files will be served from this directory
-            services.AddSpaStaticFiles(configuration =>
-            {
-                configuration.RootPath = "ClientApp/build";
-            });
-
             services.AddEasyQuery()
                     .UseSqlManager()
                     .AddDefaultExporters()
@@ -79,9 +70,6 @@ namespace EqDemo
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();
-            if (!env.IsDevelopment()) {
-                app.UseSpaStaticFiles();
-            }
 
             app.UseRouting();
 
@@ -103,15 +91,8 @@ namespace EqDemo
                 endpoints.MapControllerRoute(
                     name: "default",
                     pattern: "{controller}/{action=Index}/{id?}");
-            });
 
-            app.UseSpa(spa =>
-            {
-                spa.Options.SourcePath = "ClientApp";
-
-                if (env.IsDevelopment()) {
-                    spa.UseReactDevelopmentServer(npmScript: "start");
-                }
+                endpoints.MapFallbackToFile("index.html");
             });
 
             //Init demo database (if necessary)

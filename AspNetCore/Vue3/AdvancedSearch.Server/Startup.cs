@@ -7,8 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
 
-//using VueCliMiddleware;
-
 using Korzh.EasyQuery.Services;
 using EasyData.Export;
 using Korzh.EasyQuery.Db;
@@ -75,9 +73,7 @@ namespace EqDemo
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();
-            //if (!env.IsDevelopment()) {
-            //    app.UseSpaStaticFiles();
-            //}
+
        
             app.UseRouting();
 
@@ -107,20 +103,6 @@ namespace EqDemo
                 endpoints.MapRazorPages();
                 endpoints.MapControllers();
             });
-
-            //app.UseSpa(spa => {
-
-            //    spa.Options.SourcePath = "ClientApp";
-            //    spa.Options.StartupTimeout = TimeSpan.FromMinutes(2);
-
-            //    if (env.IsDevelopment()) {
-            //        // run npm process with client app
-            //        spa.UseVueCli(npmScript: "dev", port: 8086, regex: "vite");
-            //        // if you just prefer to proxy requests from client app, use proxy to SPA dev server instead:
-            //        // app should be already running before starting a .NET client
-            //        spa.UseProxyToSpaDevelopmentServer("http://localhost:8086"); // your Vue app port
-            //    }
-            //});
 
 
             //Init demo database (if necessary)

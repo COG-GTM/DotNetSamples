@@ -14,6 +14,6 @@ builder.Services.AddHttpClient("EqDemo.BlazorWasm.AdhocReporting.ServerAPI", cli
 // Supply HttpClient instances that include access tokens when making requests to the server project
 builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("EqDemo.BlazorWasm.AdhocReporting.ServerAPI"));
 
-builder.Services.AddApiAuthorization();
+builder.Services.AddAuthorizationCore();
 
 await builder.Build().RunAsync();
