@@ -1,0 +1,71 @@
+# Spins up the cross-platform ASP.NET Core EasyQuery samples in Linux containers.
+# Each app self-seeds a SQLite database (Northwind) on first start from App_Data/EqDemoData.zip.
+#
+# Windows-only families (AspNet4 MVC/WebForms, WinForms, WPF) are NOT included here:
+# they target .NET Framework / net*-windows and cannot run in Linux containers.
+#
+# Usage:
+#   docker compose up -d --build                         # the 8 working services below
+#   docker compose --profile needs-upgrade up -d --build # also try the legacy SPA samples
+#
+# Service / port map:
+#   8001 razor-advancedsearch     8005 blazor-server
+#   8002 razor-adhocreporting     8006 blazor-wasm
+#   8003 razor-datafiltering      8007 angular-advancedsearch
+#   8004 mvc-datafiltering        8013 razor-ts-adhocreporting
+
+services:
+  # ============ Working services (default) ============
+
+  # ---- Pure ASP.NET Core (no Node build) ----
+  razor-advancedsearch:        # net8.0
+    build: { context: ., dockerfile: AspNetCore/Razor-Mvc/Razor.AdvancedSearch/Dockerfile }
+    ports: ["8001:8080"]
+
+  razor-adhocreporting:        # net8.0 (login required: /Identity/Account/Login)
+    build: { context: ., dockerfile: AspNetCore/Razor-Mvc/Razor.AdHocReporting/Dockerfile }
+    ports: ["8002:8080"]
+
+  razor-datafiltering:         # net8.0
+    build: { context: ., dockerfile: AspNetCore/Razor-Mvc/Razor.DataFiltering/Dockerfile }
+    ports: ["8003:8080"]
+
+  mvc-datafiltering:           # net8.0
+    build: { context: ., dockerfile: AspNetCore/Razor-Mvc/Mvc.DataFiltering/Dockerfile }
+    ports: ["8004:8080"]
+
+  blazor-server:               # net6.0 (EOL) -> runs on aspnet:6.0
+    build: { context: ., dockerfile: AspNetCore/Blazor/AdvancedSearch.BlazorServer/Dockerfile }
+    ports: ["8005:8080"]
+
+  blazor-wasm:                 # net6.0 (EOL) -> runs on aspnet:6.0
+    build: { context: ., dockerfile: AspNetCore/Blazor/AdHocReporting.BlazorWasm/Server/Dockerfile }
+    ports: ["8006:8080"]
+
+  # ---- SPA-backed that build cleanly ----
+  angular-advancedsearch:      # net8.0 + Angular 12 (built on Node 16)
+    build: { context: ., dockerfile: AspNetCore/Angular/AdvancedSearch/Dockerfile }
+    ports: ["8007:8080"]
+
+  razor-ts-adhocreporting:     # net8.0 + TypeScript/Rollup 4 (built on Node 20)
+    build: { context: ., dockerfile: AspNetCore/Razor-Mvc/RazorTypeScript.AdHocReporting/Dockerfile }
+    ports: ["8013:8080"]
+
+  # ============ Legacy SPA samples (opt-in: --profile needs-upgrade) ============
+  # These currently FAIL to build because of obsolete front-end toolchains.
+  # See UPGRADES.md for the specific failure and the recommended upgrade.
+
+  react-advancedsearch:        # net6.0 + react-scripts ^1.1.5 (fails: "Failed to minify")
+    profiles: ["needs-upgrade"]
+    build: { context: ., dockerfile: AspNetCore/React/AdvancedSearch/Dockerfile }
+    ports: ["8011:8080"]
+
+  vue2-advancedsearch:         # net6.0 + @vue/cli-service ^3 (fails: TS strict init errors)
+    profiles: ["needs-upgrade"]
+    build: { context: ., dockerfile: AspNetCore/Vue2/AdvancedSearch/Dockerfile }
+    ports: ["8009:8080"]
+
+  stencil-advancedsearch:      # net6.0 + @stencil/core ^2 (fails: prerender hydration error)
+    profiles: ["needs-upgrade"]
+    build: { context: ., dockerfile: AspNetCore/Stencil/AdvancedSearch/Dockerfile }
+    ports: ["8012:8080"]
