@@ -18,8 +18,22 @@ using RazorRegisterModel = RazorAdHoc::EqDemo.Areas.Identity.Pages.Account.Regis
 
 namespace EqSamples.Tests.RazorAdHocReporting;
 
-public class IdentityPageModelsTests
+public class IdentityPageModelsTests : IDisposable
 {
+    private readonly List<string> _tempDirs = new();
+    private readonly List<RazorAdHoc::EqDemo.AppDbContext> _contexts = new();
+
+    public void Dispose()
+    {
+        foreach (var ctx in _contexts)
+            ctx.Dispose();
+        foreach (var dir in _tempDirs)
+        {
+            if (Directory.Exists(dir))
+                Directory.Delete(dir, recursive: true);
+        }
+    }
+
     private static Mock<SignInManager<IdentityUser>> CreateMockSignInManager()
     {
         var userStoreMock = new Mock<IUserStore<IdentityUser>>();
@@ -315,17 +329,19 @@ public class IdentityPageModelsTests
         input.ConfirmPassword.Should().Be("P@ss1234");
     }
 
-    private static RazorAdHoc::EqDemo.Services.DefaultReportGenerator CreateReportGenerator()
+    private RazorAdHoc::EqDemo.Services.DefaultReportGenerator CreateReportGenerator()
     {
         var tmpDir = Path.Combine(Path.GetTempPath(), $"EqIdentity_{Guid.NewGuid()}");
         var seedDir = Path.Combine(tmpDir, $"App_Data\\Seed");
         Directory.CreateDirectory(seedDir);
+        _tempDirs.Add(tmpDir);
         var mockEnv = new Mock<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>();
         mockEnv.Setup(e => e.ContentRootPath).Returns(tmpDir);
         var options = new DbContextOptionsBuilder<RazorAdHoc::EqDemo.AppDbContext>()
             .UseInMemoryDatabase($"Identity_{Guid.NewGuid()}")
             .Options;
         var ctx = new RazorAdHoc::EqDemo.AppDbContext(options);
+        _contexts.Add(ctx);
         return new RazorAdHoc::EqDemo.Services.DefaultReportGenerator(mockEnv.Object, ctx);
     }
 
