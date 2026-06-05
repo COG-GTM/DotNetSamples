@@ -1,0 +1,61 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <NoWarn>CS8600;CS8601;CS8602;CS8603;CS8604;CS8618;CS8625;CS0436</NoWarn>
+    <!-- Coverlet coverage configuration -->
+    <CollectCoverage>true</CollectCoverage>
+    <CoverletOutputFormat>cobertura</CoverletOutputFormat>
+    <CoverletOutput>./TestResults/</CoverletOutput>
+    <Include>[EqDemo.*]*</Include>
+    <!--
+      Exclude from coverage:
+      - Auto-generated Razor views (AspNetCoreGeneratedDocument.*, *Pages_*, *Views_*)
+      - Application startup/config (Program, Startup, DbInitializeExtensions)
+      - EasyQuery-dependent classes requiring full EQ infrastructure (OrderController, ReportStore, CustomEasyQueryManagerSql)
+    -->
+    <Exclude>[*]AspNetCoreGeneratedDocument.*,[*]*Pages_*,[*]*Views_*,[*]Program,[*]*.Program,[*]*.Startup,[*]*DbInitializeExtensions*,[*]*ReportStore,[*]*CustomEasyQueryManagerSql,[*]*OrderController</Exclude>
+    <ThresholdType>line</ThresholdType>
+    <Threshold>95</Threshold>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.0" />
+    <PackageReference Include="coverlet.msbuild" Version="6.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="xunit" Version="2.5.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
+    <PackageReference Include="Moq" Version="4.20.70" />
+    <PackageReference Include="FluentAssertions" Version="6.12.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.2" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.2" />
+  </ItemGroup>
+
+  <!-- Project references with extern aliases to avoid namespace collisions -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\AspNetCore\Razor-Mvc\Mvc.DataFiltering\EqDemo.AspNetCoreMvc.DataFiltering.csproj">
+      <Aliases>MvcDataFiltering</Aliases>
+    </ProjectReference>
+    <ProjectReference Include="..\..\AspNetCore\Razor-Mvc\Razor.AdHocReporting\EqDemo.AspNetCoreRazor.AdhocReporting.csproj">
+      <Aliases>RazorAdHoc</Aliases>
+    </ProjectReference>
+    <ProjectReference Include="..\..\AspNetCore\Razor-Mvc\Razor.AdvancedSearch\EqDemo.AspNetCoreRazor.AdvancedSearch.csproj">
+      <Aliases>RazorAdvSearch</Aliases>
+    </ProjectReference>
+    <ProjectReference Include="..\..\AspNetCore\Razor-Mvc\Razor.DataFiltering\EqDemo.AspNetCoreRazor.DataFiltering.csproj">
+      <Aliases>RazorDataFilter</Aliases>
+    </ProjectReference>
+    <ProjectReference Include="..\..\AspNetCore\Angular\AdvancedSearch\EqDemo.Angular.AdvancedSearch.csproj">
+      <Aliases>AngularAdvSearch</Aliases>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>
