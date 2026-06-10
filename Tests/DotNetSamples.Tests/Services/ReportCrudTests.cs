@@ -1,22 +1,20 @@
 using EqDemo;
 using EqDemo.Models;
 using FluentAssertions;
-using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Moq;
-using System.Security.Claims;
 
 namespace DotNetSamples.Tests.Services;
 
-public class ReportStoreTests
+public class ReportCrudTests
 {
-    private static AppDbContext CreateContext(string dbName)
+    private static AppDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase(dbName)
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        return new AppDbContext(options);
+        var ctx = new AppDbContext(options);
+        ctx.Database.EnsureCreated();
+        return ctx;
     }
 
     private static Report MakeReport(string id, string name, string modelId, string ownerId)
@@ -32,33 +30,10 @@ public class ReportStoreTests
         };
     }
 
-    private static (IServiceProvider, AppDbContext) CreateServices(string userId, string dbName)
-    {
-        var context = CreateContext(dbName);
-        context.Database.EnsureCreated();
-
-        var claims = new ClaimsPrincipal(new ClaimsIdentity(new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, userId)
-        }, "TestAuth"));
-
-        var httpContext = new DefaultHttpContext { User = claims };
-        var httpContextAccessor = new Mock<IHttpContextAccessor>();
-        httpContextAccessor.Setup(x => x.HttpContext).Returns(httpContext);
-
-        var services = new ServiceCollection();
-        services.AddSingleton(httpContextAccessor.Object);
-        services.AddSingleton(context);
-        var provider = services.BuildServiceProvider();
-
-        return (provider, context);
-    }
-
     [Fact]
-    public async Task ReportsCrudOperations_AddAndRetrieve()
+    public async Task AddAndRetrieve()
     {
-        var dbName = Guid.NewGuid().ToString();
-        var (_, context) = CreateServices("user-1", dbName);
+        using var context = CreateContext();
 
         var report = MakeReport("r1", "Sales Report", "adhoc-reporting", "user-1");
         context.Reports.Add(report);
@@ -71,10 +46,9 @@ public class ReportStoreTests
     }
 
     [Fact]
-    public async Task ReportsCrudOperations_UpdateReport()
+    public async Task UpdateReport()
     {
-        var dbName = Guid.NewGuid().ToString();
-        var (_, context) = CreateServices("user-1", dbName);
+        using var context = CreateContext();
 
         var report = MakeReport("r1", "Original", "m1", "user-1");
         context.Reports.Add(report);
@@ -91,10 +65,9 @@ public class ReportStoreTests
     }
 
     [Fact]
-    public async Task ReportsCrudOperations_DeleteReport()
+    public async Task DeleteReport()
     {
-        var dbName = Guid.NewGuid().ToString();
-        var (_, context) = CreateServices("user-1", dbName);
+        using var context = CreateContext();
 
         var report = MakeReport("r1", "To Delete", "m1", "user-1");
         context.Reports.Add(report);
@@ -108,10 +81,9 @@ public class ReportStoreTests
     }
 
     [Fact]
-    public async Task ReportsFiltering_ByOwner()
+    public async Task FilterByOwner()
     {
-        var dbName = Guid.NewGuid().ToString();
-        var (_, context) = CreateServices("user-1", dbName);
+        using var context = CreateContext();
 
         context.Reports.AddRange(
             MakeReport("r1", "Report A", "m1", "user-1"),
@@ -129,10 +101,9 @@ public class ReportStoreTests
     }
 
     [Fact]
-    public async Task ReportsFiltering_ByModelId()
+    public async Task FilterByModelId()
     {
-        var dbName = Guid.NewGuid().ToString();
-        var (_, context) = CreateServices("user-1", dbName);
+        using var context = CreateContext();
 
         context.Reports.AddRange(
             MakeReport("r1", "Report A", "model-1", "user-1"),
@@ -151,10 +122,9 @@ public class ReportStoreTests
     }
 
     [Fact]
-    public async Task ReportsFiltering_ByOwnerAndModel()
+    public async Task FilterByOwnerAndModel()
     {
-        var dbName = Guid.NewGuid().ToString();
-        var (_, context) = CreateServices("user-1", dbName);
+        using var context = CreateContext();
 
         context.Reports.AddRange(
             MakeReport("r1", "A", "m1", "user-1"),
@@ -171,16 +141,5 @@ public class ReportStoreTests
 
         results.Should().HaveCount(2);
         results.Select(r => r.Name).Should().ContainInOrder("A", "D");
-    }
-
-    [Fact]
-    public void HttpContextAccessor_ShouldResolveFromServices()
-    {
-        var (provider, _) = CreateServices("test-user", Guid.NewGuid().ToString());
-
-        var accessor = provider.GetService<IHttpContextAccessor>();
-        accessor.Should().NotBeNull();
-        accessor!.HttpContext.Should().NotBeNull();
-        accessor.HttpContext!.User.FindFirst(ClaimTypes.NameIdentifier)?.Value.Should().Be("test-user");
     }
 }
