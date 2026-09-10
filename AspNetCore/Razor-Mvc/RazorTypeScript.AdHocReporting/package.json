@@ -28,6 +28,7 @@
     "rollup-plugin-no-emit": "^1.1.1",
     "rollup-plugin-postcss": "^4.0.2",
     "rollup-plugin-progress": "^1.1.2",
-    "tslib": "^2.6.2"
+    "tslib": "^2.6.2",
+    "typescript": "^5.4.2"
   }
 }
