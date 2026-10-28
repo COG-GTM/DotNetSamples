@@ -10,5 +10,6 @@ dotnet user-secrets set "DemoUser:Password" "<choose-a-password>"
 ```
 
 The user's email comes from `DemoUser:Email` in `appsettings.json` (default `demo@korzh.com`).
-Without `DemoUser:Password` no demo user is created, and an existing demo user that still has the
-old published password `demo` has its password removed, so it can no longer sign in.
+On every start, an existing demo user that still accepts the old published password `demo` has that
+password removed. Without a valid `DemoUser:Password` (missing, `demo`, or failing the password rules)
+no demo user is created; once one is configured, a passwordless demo user gets it assigned.

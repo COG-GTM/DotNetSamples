@@ -49,19 +49,20 @@ namespace EqDemo
 
             try {
                 var user = string.IsNullOrWhiteSpace(demoUser.Email) ? null : await userManager.FindByEmailAsync(demoUser.Email);
-                var usesPublishedCredential = user != null && await userManager.CheckPasswordAsync(user, PublishedLegacyCredential);
+                if (user != null && await userManager.CheckPasswordAsync(user, PublishedLegacyCredential)) {
+                    var removed = await userManager.RemovePasswordAsync(user);
+                    Console.WriteLine(removed.Succeeded
+                        ? "Published password removed from the existing default demo user."
+                        : "Failed to remove the published password from the default demo user: " + DescribeErrors(removed));
+                }
 
                 if (!demoUser.IsConfigured) {
-                    if (usesPublishedCredential) {
-                        await userManager.RemovePasswordAsync(user);
-                        Console.WriteLine("Password sign-in disabled for the existing default demo user.");
-                    }
                     Console.WriteLine($"Default demo user is not created: set '{DemoUserOptions.PasswordKey}' via user-secrets or environment variables.");
                     return;
                 }
 
-                if (!await IsValidPasswordAsync(userManager, demoUser.Password)) {
-                    Console.WriteLine($"'{DemoUserOptions.PasswordKey}' does not satisfy the Identity password rules; default demo user left unchanged.");
+                if (demoUser.Password == PublishedLegacyCredential || !await IsValidPasswordAsync(userManager, demoUser.Password)) {
+                    Console.WriteLine($"'{DemoUserOptions.PasswordKey}' is the published password or does not satisfy the Identity password rules; default demo user not created.");
                     return;
                 }
 
@@ -88,13 +89,15 @@ namespace EqDemo
                         await defaultReportsGenerator.GenerateAsync(user);
                     }
                     else {
-                        Console.WriteLine("Default demo user was not created: " + string.Join("; ", result.Errors.Select(e => e.Description)));
+                        Console.WriteLine("Default demo user was not created: " + DescribeErrors(result));
                     }
                 }
                 else {
-                    if (usesPublishedCredential) {
-                        var token = await userManager.GeneratePasswordResetTokenAsync(user);
-                        await userManager.ResetPasswordAsync(user, token, demoUser.Password);
+                    if (!await userManager.HasPasswordAsync(user)) {
+                        var added = await userManager.AddPasswordAsync(user, demoUser.Password);
+                        if (!added.Succeeded) {
+                            Console.WriteLine("Failed to set the configured password on the default demo user: " + DescribeErrors(added));
+                        }
                     }
                     if (!await userManager.IsInRoleAsync(user, DefaultEqAuthProvider.EqManagerRole)) {
                         await userManager.AddToRoleAsync(user, DefaultEqAuthProvider.EqManagerRole);
@@ -105,6 +108,9 @@ namespace EqDemo
                 Console.WriteLine(ex);
             }
         }
+
+        private static string DescribeErrors(IdentityResult result)
+            => string.Join("; ", result.Errors.Select(e => e.Description));
 
         private static async Task<bool> IsValidPasswordAsync(UserManager<IdentityUser> userManager, string password)
         {
