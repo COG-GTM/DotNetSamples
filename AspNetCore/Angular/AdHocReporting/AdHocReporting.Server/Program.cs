@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Rewrite;
 
 using EasyData.Export;
@@ -39,6 +40,24 @@ builder.Services.Configure<CookiePolicyOptions>(options => {
 
 builder.Services.ConfigureApplicationCookie(options => {
     options.ExpireTimeSpan = TimeSpan.FromDays(30);
+
+    // API callers get 401/403 instead of a redirect to the login page
+    options.Events.OnRedirectToLogin = context => {
+        if (context.Request.Path.StartsWithSegments("/api")) {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return Task.CompletedTask;
+        }
+        context.Response.Redirect(context.RedirectUri);
+        return Task.CompletedTask;
+    };
+    options.Events.OnRedirectToAccessDenied = context => {
+        if (context.Request.Path.StartsWithSegments("/api")) {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return Task.CompletedTask;
+        }
+        context.Response.Redirect(context.RedirectUri);
+        return Task.CompletedTask;
+    };
 });
 
 builder.Services.AddCors(options => {
@@ -101,6 +120,17 @@ app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
 
+//EasyQuery API is available to signed-in users only
+app.UseWhen(context => context.Request.Path.StartsWithSegments("/api/adhoc-reporting"), branch => {
+    branch.Use(async (context, next) => {
+        if (context.User.Identity?.IsAuthenticated != true) {
+            await context.ChallengeAsync();
+            return;
+        }
+        await next();
+    });
+});
+
 //Adding EasyQuery API middleware
 app.MapEasyQuery(options => {
     options.DefaultModelId = "adhoc-reporting";
@@ -118,16 +148,17 @@ app.MapEasyQuery(options => {
     });
 
     // here we add our custom query store
-    options.UseQueryStore((manager) => new ReportStore(manager.Services, builder.Configuration));
+    options.UseQueryStore((manager) => new ReportStore(manager.Services));
 
-    //    options.UseDefaultAuthProvider((provider) => {
-    //by default NewQuery, SaveQuery and RemoveQuery actions are accessible by the users with 'eq-manager' role 
-    //here you can remove that requirement and make those actions available for all authorized users
-    //provider.RequireAuthorization(EqAction.NewQuery, EqAction.SaveQuery, EqAction.RemoveQuery);
+    options.UseDefaultAuthProvider((provider) => {
+        //by default NewQuery, SaveQuery and RemoveQuery actions are accessible by the users with 'eq-manager' role 
+        //here we remove that requirement and make those actions available for all authorized users
+        //(ReportStore limits every user to their own reports)
+        provider.RequireAuthorization(EqAction.NewQuery, EqAction.SaveQuery, EqAction.RemoveQuery);
 
-    //here is an example how you can make some actions accessible only by users with a particular role.
-    //provider.RequireRole(DefaultEqAuthProvider.EqManagerRole, EqAction.NewQuery, EqAction.SaveQuery, EqAction.RemoveQuery);
-    //    });
+        //here is an example how you can make some actions accessible only by users with a particular role.
+        //provider.RequireRole(DefaultEqAuthProvider.EqManagerRole, EqAction.NewQuery, EqAction.SaveQuery, EqAction.RemoveQuery);
+    });
 
     options.AddPreFetchTunerWithHttpContext((manager, context) => {
         //the next two lines demonstrate how to add to each generated query a condition that filters data by the current user

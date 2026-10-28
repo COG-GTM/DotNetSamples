@@ -7,6 +7,8 @@ const PROXY_CONFIG = [
   {
     context: [
       "/api/**",
+      "/Identity/**",
+      "/_content/**",
     ],
     target,
     secure: false
