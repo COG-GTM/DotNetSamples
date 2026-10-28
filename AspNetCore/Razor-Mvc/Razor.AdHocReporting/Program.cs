@@ -41,10 +41,12 @@ builder.Services.ConfigureApplicationCookie(options => {
     options.ExpireTimeSpan = TimeSpan.FromDays(30);
 });
 
+// Cross-origin access is opt-in: list trusted origins in "Cors:AllowedOrigins" (empty = same-origin only).
+var corsAllowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
 builder.Services.AddCors(options => {
-    options.AddPolicy(name: "AllowAllPolicy",
+    options.AddPolicy(name: "ConfiguredOriginsPolicy",
         builder => {
-            builder.AllowAnyOrigin();
+            builder.WithOrigins(corsAllowedOrigins);
             builder.AllowAnyHeader();
             builder.AllowAnyMethod();
             builder.WithExposedHeaders("Content-Disposition");
@@ -92,7 +94,7 @@ var redirectOptions = new RewriteOptions()
 app.UseRewriter(redirectOptions);
 
 app.UseHttpsRedirection();
-app.UseCors("AllowAllPolicy");
+app.UseCors("ConfiguredOriginsPolicy");
 app.UseStaticFiles();
 app.UseRouting();
 app.UseSession();
