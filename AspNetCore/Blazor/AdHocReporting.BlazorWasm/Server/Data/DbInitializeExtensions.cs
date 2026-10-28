@@ -125,6 +125,9 @@ namespace EqDemo.Services
                         }
                         else {
                             logger.LogWarning("Default demo user password was not updated: {Errors}", string.Join("; ", result.Errors.Select(e => e.Description)));
+                            if (acceptsLegacyPassword) {
+                                await RetireLegacyAccountAsync(userManager, logger, user);
+                            }
                         }
                     }
 
