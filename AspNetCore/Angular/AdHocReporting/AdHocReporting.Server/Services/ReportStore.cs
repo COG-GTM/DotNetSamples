@@ -51,7 +51,7 @@ namespace EqDemo
             }
 
             var userManager = Services.GetRequiredService<UserManager<IdentityUser>>();
-            var user = userManager.FindByEmailAsync(DbInitializeExtensions.defaultUserEmail).Result;
+            var user = userManager.FindByEmailAsync(DbInitializeExtensions.GetDefaultUserEmail(_config)).Result;
             if (user != null) {
                 return user.Id;
             }
