@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Web.Http;
 using System.Configuration;
 
@@ -17,6 +18,18 @@ namespace EqDemo.Controllers
     [Authorize]
     public class EasyReportController : EasyQueryApiController
     {
+        // Only the Northwind business tables are reportable. DefaultConnection also holds
+        // the ASP.NET Identity tables, __MigrationHistory and the per-user Reports table.
+        internal static readonly ISet<string> ReportableTables = new HashSet<string>(StringComparer.OrdinalIgnoreCase) {
+            "Categories",
+            "Customers",
+            "Employees",
+            "Orders",
+            "Order_Details",
+            "Products",
+            "Shippers",
+            "Suppliers"
+        };
 
         protected override void ConfigureEasyQueryOptions(EasyQueryOptions options)
         {
@@ -35,7 +48,7 @@ namespace EqDemo.Controllers
 
             options.ConnectionString = ConfigurationManager.ConnectionStrings["DefaultConnection"]?.ToString();
             options.UseDbConnectionModelLoader(settings => {
-                settings.AddTableFilter(tbl => !tbl.Name.StartsWith("sys"));
+                settings.AddTableFilter(tbl => ReportableTables.Contains(tbl.Name));
                 settings.AddFieldFilter(fld => !fld.IsForeignKey);
                 settings.AddFieldFilter(fld => { 
                     if (fld.Name == "CompanyName") fld.Name = "Customer Name"; 
