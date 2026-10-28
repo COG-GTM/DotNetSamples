@@ -8,7 +8,16 @@ import '@easyquery/ui/dist/assets/css/easyquery.ui.css'
 bootstrapApplication(AppComponent, appConfig)
   .catch((err) => console.error(err));
 
-window.addEventListener('load', () => {
+const endpoint = '/api/adhoc-reporting';
+
+window.addEventListener('load', async () => {
+
+    //The reporting API requires a signed-in user: send anonymous visitors to the login page
+    const authCheck = await fetch(`${endpoint}/models/adhoc-reporting/queries`, { credentials: 'same-origin' });
+    if (authCheck.status === 401) {
+        window.location.href = '/Identity/Account/Login?ReturnUrl=' + encodeURIComponent(window.location.pathname);
+        return;
+    }
 
     //Options for ReportViewJQuery
     const viewOptions: ReportViewOptions = {
@@ -45,7 +54,7 @@ window.addEventListener('load', () => {
 
     const reportView = new ReportView();
     reportView.getContext()
-        .useEndpoint('/api/adhoc-reporting')
+        .useEndpoint(endpoint)
         .useEnterprise(() => {
             reportView.init(viewOptions);
         });

@@ -15,8 +15,6 @@ using Korzh.EasyQuery.Services;
 
 using EqDemo.Models;
 using System.Threading;
-using EqDemo.Services;
-using Microsoft.AspNetCore.Identity;
 
 namespace EqDemo
 {
@@ -24,40 +22,23 @@ namespace EqDemo
     {
         private IHttpContextAccessor _httpContextAccessor;
         private AppDbContext _dbContext;
-        private IConfiguration _config;
 
         protected IServiceProvider Services;
 
-        public ReportStore(IServiceProvider services, IConfiguration config)
+        public ReportStore(IServiceProvider services)
         {
             Services = services;
             _httpContextAccessor = Services.GetRequiredService<IHttpContextAccessor>();
             _dbContext = Services.GetRequiredService<AppDbContext>();
-            _config = config;
         }
 
         private string GetUserId() {
-            var userClaim = _httpContextAccessor?.HttpContext?.User;
-
-            if (userClaim != null) {
-                var userId = userClaim.FindFirst(ClaimTypes.NameIdentifier)?.Value; 
-                if (userId != null) { 
-                    return userId;
-                }
+            var userId = _httpContextAccessor?.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId)) {
+                throw new UnauthorizedAccessException("User is not authenticated");
             }
 
-            if (_config.GetValue<bool>("needAuth")) {
-                throw new Exception("User is not authenticated");
-            }
-
-            var userManager = Services.GetRequiredService<UserManager<IdentityUser>>();
-            var user = userManager.FindByEmailAsync(DbInitializeExtensions.defaultUserEmail).Result;
-            if (user != null) {
-                return user.Id;
-            }
-            else {
-                throw new Exception("Can't get default user");
-            }
+            return userId;
         }
 
         public async Task<bool> AddQueryAsync(Query query, CancellationToken ct = default)
