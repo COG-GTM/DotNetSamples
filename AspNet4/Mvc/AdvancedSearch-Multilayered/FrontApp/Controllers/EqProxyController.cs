@@ -1,20 +1,30 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using System.Web.Mvc;
 
+using EqDemo.Security;
+
 namespace EqDemo.Controllers
 {
     [RoutePrefix("eqproxy")]
+    [Authorize]
     public class EqProxyController : Controller
     {
+        private const string ServiceKeyHeader = "X-EqService-Key";
+        private const string QueryEditorHeader = "X-Eq-Query-Editor";
+
+        private static readonly Regex IdPattern =
+            new Regex("^[A-Za-z0-9-]{1,64}$", RegexOptions.CultureInvariant);
 
         private readonly HttpClient _httpClient;
 
@@ -22,6 +32,25 @@ namespace EqDemo.Controllers
         {
             _httpClient = new HttpClient();
             _httpClient.BaseAddress = new Uri("https://localhost:44331/api/easyquery/"); // service app path
+            _httpClient.DefaultRequestHeaders.TryAddWithoutValidation(ServiceKeyHeader,
+                ConfigurationManager.AppSettings["EqService:ApiKey"] ?? string.Empty);
+        }
+
+        protected override void OnActionExecuting(ActionExecutingContext filterContext)
+        {
+            foreach (var name in new[] { "modelId", "queryId" }) {
+                if (filterContext.ActionParameters.TryGetValue(name, out var value)
+                    && !(value is string id && IdPattern.IsMatch(id))) {
+                    filterContext.Result = JsonContent("{\"error\":\"Invalid model or query id\"}", HttpStatusCode.BadRequest);
+                    return;
+                }
+            }
+
+            if (QueryEditorAuthorizeAttribute.IsQueryEditor(filterContext.HttpContext)) {
+                _httpClient.DefaultRequestHeaders.TryAddWithoutValidation(QueryEditorHeader, "true");
+            }
+
+            base.OnActionExecuting(filterContext);
         }
 
         [HttpGet]
@@ -63,6 +92,7 @@ namespace EqDemo.Controllers
         }
 
         [HttpPost]
+        [QueryEditorAuthorize]
         [Route("models/{modelId}/queries")]
         public async Task<ActionResult> NewQueryAsync(string modelId, CancellationToken ct)
         {
@@ -77,6 +107,7 @@ namespace EqDemo.Controllers
         }
 
         [HttpPut]
+        [QueryEditorAuthorize]
         [Route("models/{modelId}/queries/{queryId}")]
         public async Task<ActionResult> SaveQueryAsync(string modelId, string queryId, CancellationToken ct)
         {
@@ -91,6 +122,7 @@ namespace EqDemo.Controllers
         }
 
         [HttpDelete]
+        [QueryEditorAuthorize]
         [Route("models/{modelId}/queries/{queryId}")]
         public async Task<ActionResult> RemoveQueryAsync(string modelId, string queryId, CancellationToken ct)
         {

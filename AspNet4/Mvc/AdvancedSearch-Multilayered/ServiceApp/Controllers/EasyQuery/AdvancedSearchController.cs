@@ -9,10 +9,14 @@ using Korzh.EasyQuery.Services;
 using Korzh.EasyQuery.AspNet;
 
 using EqDemo.Models;
+using EqDemo.Security;
+using EqDemo.Services;
 
 namespace EqDemo.Controllers
 {
     [RoutePrefix("api/easyquery")]
+    [ServiceKeyAuthorize]
+    [QueryStoreWriteGuard]
     public class AdvancedSearchController : EasyQueryApiController
     {
         protected override void ConfigureEasyQueryOptions(EasyQueryOptions options)
@@ -32,7 +36,7 @@ namespace EqDemo.Controllers
             //options.UseDbConnectionModelLoader();
 
             var path = System.Web.Hosting.HostingEnvironment.MapPath("~/App_Data");
-            options.UseQueryStore((_) => new FileQueryStore(path));
+            options.UseQueryStore((_) => new ValidatingQueryStore(new FileQueryStore(path)));
         }
 
         public override async Task<IHttpActionResult> SaveQueryAsync(string modelId, string queryId, CancellationToken ct)
@@ -41,6 +45,11 @@ namespace EqDemo.Controllers
             {
                 var requestStream = await Request.Content.ReadAsStreamAsync();
                 await Manager.ReadRequestContentFromStreamAsync(modelId, requestStream, ct);
+
+                if (Manager.Query.Id != queryId) {
+                    return BadRequest("Query id in the request body does not match the route");
+                }
+
                 await Manager.SaveQueryToStoreAsync(true, ct);
 
                 if (Options.ReturnQueryOnSave)
