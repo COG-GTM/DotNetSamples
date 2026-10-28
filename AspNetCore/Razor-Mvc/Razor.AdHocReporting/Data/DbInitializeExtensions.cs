@@ -98,13 +98,12 @@ namespace EqDemo.Services
                     }
                 }
                 else {
-                    // Seed-owned accounts (legacy credential or eq-manager role) follow the configured password; self-registered accounts keep theirs.
-                    var isSeedOwned = usesPublishedCredential || await userManager.IsInRoleAsync(user, DefaultEqAuthProvider.EqManagerRole);
-                    if (isSeedOwned && !await userManager.CheckPasswordAsync(user, demoUser.Password)) {
+                    if (usesPublishedCredential) {
+                        // Rotate an account seeded by older versions to the configured password; other accounts keep theirs.
                         var token = await userManager.GeneratePasswordResetTokenAsync(user);
                         await userManager.ResetPasswordAsync(user, token, demoUser.Password);
                     }
-                    if (usesPublishedCredential && !await userManager.IsInRoleAsync(user, DefaultEqAuthProvider.EqManagerRole)) {
+                    if (!await userManager.IsInRoleAsync(user, DefaultEqAuthProvider.EqManagerRole)) {
                         await userManager.AddToRoleAsync(user, DefaultEqAuthProvider.EqManagerRole);
                     }
                 }
