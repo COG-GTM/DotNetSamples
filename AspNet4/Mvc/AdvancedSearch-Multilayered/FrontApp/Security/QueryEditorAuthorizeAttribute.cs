@@ -35,13 +35,10 @@ namespace EqDemo.Security
                 source = request.Headers["Referer"];
             }
 
-            // Browsers send Origin (or at least Referer) on cross-site writes;
-            // a request with neither did not come from another site's page.
-            if (string.IsNullOrEmpty(source)) {
-                return true;
-            }
-
-            return Uri.TryCreate(source, UriKind.Absolute, out var sourceUri)
+            // Modern browsers send Origin on every POST/PUT/DELETE, so a write with
+            // neither header is treated as untrusted.
+            return !string.IsNullOrEmpty(source)
+                && Uri.TryCreate(source, UriKind.Absolute, out var sourceUri)
                 && Uri.Compare(sourceUri, request.Url, UriComponents.SchemeAndServer,
                     UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) == 0;
         }
