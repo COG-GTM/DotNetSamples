@@ -111,8 +111,8 @@ namespace EqDemo.Services
                     if (defaultUserPassword != PublishedDemoPassword
                         && await userManager.CheckPasswordAsync(user, PublishedDemoPassword)) {
                         // Rotate an account seeded by an earlier version that still accepts the published password.
-                        await userManager.RemovePasswordAsync(user);
-                        var result = await userManager.AddPasswordAsync(user, defaultUserPassword);
+                        var resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
+                        var result = await userManager.ResetPasswordAsync(user, resetToken, defaultUserPassword);
                         if (result.Succeeded) {
                             Console.WriteLine($"Rotated the published password of the default user '{defaultUserEmail}'.");
                             ReportGeneratedPassword(isGeneratedPassword, defaultUserPassword);
