@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -7,6 +8,8 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 using Korzh.DbUtils;
 
@@ -37,20 +40,39 @@ namespace EqDemo.Services
                     await CheckAddManagerRoleAsync(scope.ServiceProvider);
 
                     //create default user
-                    await CheckAddDefaultUserAsync(scope.ServiceProvider, config);
+                    await CheckAddDefaultUserAsync(scope.ServiceProvider, config, env);
                 }
             }
         }
 
-        const string _defaultUserEmail = "demo@korzh.com";
-        const string _defaultUserPassword = "demo";
+        // Password seeded by older versions of this sample; used only to find and retire accounts that still accept it.
+        private const string LegacyPublishedPassword = "demo";
 
-        private static async Task CheckAddDefaultUserAsync(IServiceProvider scopedServices, IConfiguration config)
+        private static async Task CheckAddDefaultUserAsync(IServiceProvider scopedServices, IConfiguration config, IWebHostEnvironment env)
         {
             var userManager = scopedServices.GetRequiredService<UserManager<ApplicationUser>>();
+            var logger = scopedServices.GetRequiredService<ILoggerFactory>().CreateLogger("EqDemo.DbInitialize");
+            var demoUser = DemoUserOptions.FromConfiguration(config);
 
             try {
-                var user = await userManager.FindByEmailAsync(_defaultUserEmail);
+                var user = await userManager.FindByEmailAsync(demoUser.Email);
+                var acceptsLegacyPassword = user != null && await userManager.CheckPasswordAsync(user, LegacyPublishedPassword);
+
+                if (!env.IsDevelopment()) {
+                    if (acceptsLegacyPassword) {
+                        await userManager.RemovePasswordAsync(user);
+                        logger.LogWarning("Password sign-in disabled for the default demo user {Email}: it still accepted the published sample password.", demoUser.Email);
+                    }
+                    logger.LogInformation("Default demo user is seeded only in the Development environment.");
+                    return;
+                }
+
+                var password = demoUser.Password;
+                var passwordGenerated = string.IsNullOrEmpty(password);
+                if (passwordGenerated) {
+                    password = GeneratePassword();
+                }
+
                 var resetDemoUser = config.GetValue<bool>("resetDefaultUser");
                 if (resetDemoUser && user != null) {
                     var dbContext = scopedServices.GetRequiredService<AppDbContext>();
@@ -63,23 +85,60 @@ namespace EqDemo.Services
 
                 if (user == null) {
                     user = new ApplicationUser() {
-                        UserName = _defaultUserEmail,
-                        Email = _defaultUserEmail,
+                        UserName = demoUser.Email,
+                        Email = demoUser.Email,
                         EmailConfirmed = true
                     };
-                    var result = await userManager.CreateAsync(user, _defaultUserPassword);
+                    var result = await userManager.CreateAsync(user, password);
                     if (result.Succeeded) {
                         await userManager.AddToRoleAsync(user, DefaultEqAuthProvider.EqManagerRole);
                         var defaultReportsGenerator = scopedServices.GetRequiredService<DefaultReportGenerator>();
                         await defaultReportsGenerator.GenerateAsync(user);
+                        LogSeededPassword(logger, demoUser.Email, password, passwordGenerated);
+                    }
+                    else {
+                        logger.LogWarning("Default demo user was not created: {Errors}", string.Join("; ", result.Errors.Select(e => e.Description)));
                     }
                 }
                 else {
-                    await userManager.AddToRoleAsync(user, DefaultEqAuthProvider.EqManagerRole);
+                    var rotate = acceptsLegacyPassword
+                        || (!passwordGenerated && !await userManager.CheckPasswordAsync(user, password));
+                    if (rotate) {
+                        var token = await userManager.GeneratePasswordResetTokenAsync(user);
+                        var result = await userManager.ResetPasswordAsync(user, token, password);
+                        if (result.Succeeded) {
+                            LogSeededPassword(logger, demoUser.Email, password, passwordGenerated);
+                        }
+                        else {
+                            logger.LogWarning("Default demo user password was not updated: {Errors}", string.Join("; ", result.Errors.Select(e => e.Description)));
+                        }
+                    }
+
+                    if (!await userManager.IsInRoleAsync(user, DefaultEqAuthProvider.EqManagerRole)) {
+                        await userManager.AddToRoleAsync(user, DefaultEqAuthProvider.EqManagerRole);
+                    }
                 }
             }
             catch (Exception ex) {
                 Console.WriteLine(ex);
+            }
+        }
+
+        private static string GeneratePassword()
+        {
+            return Convert.ToBase64String(RandomNumberGenerator.GetBytes(18))
+                .Replace('+', '-')
+                .Replace('/', '_');
+        }
+
+        private static void LogSeededPassword(ILogger logger, string email, string password, bool generated)
+        {
+            if (generated) {
+                logger.LogWarning("Default demo user {Email} seeded with generated password {Password}. Set '{Key}' (user-secrets or environment) to choose your own.",
+                    email, password, DemoUserOptions.PasswordKey);
+            }
+            else {
+                logger.LogInformation("Default demo user {Email} seeded with the password from '{Key}'.", email, DemoUserOptions.PasswordKey);
             }
         }
 
