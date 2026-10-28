@@ -6,7 +6,7 @@
     ViewData["Title"] = "Log in";
     ViewData["MenuTitle"] = "Menu";
 
-    var defaultUserEmail = Configuration["DemoUser:Email"];
+    var defaultUserEmail = string.IsNullOrEmpty(Configuration["DemoUser:Password"]) ? null : Configuration["DemoUser:Email"];
 }
 
 <div class="container">

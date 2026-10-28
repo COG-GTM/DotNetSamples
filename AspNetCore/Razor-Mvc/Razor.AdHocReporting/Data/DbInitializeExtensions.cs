@@ -47,15 +47,26 @@ namespace EqDemo.Services
         private static async Task CheckAddDefaultUserAsync(IServiceProvider scopedServices)
         {
             var demoUser = DemoUserOptions.FromConfiguration(_config);
-            if (!demoUser.IsConfigured) {
-                Console.WriteLine($"Default demo user is not created: set '{DemoUserOptions.PasswordKey}' via user-secrets or environment variables.");
-                return;
-            }
-
             var userManager = scopedServices.GetRequiredService<UserManager<IdentityUser>>();
             try {
                 var dbContext = scopedServices.GetRequiredService<AppDbContext>();
-                var user = await userManager.FindByEmailAsync(demoUser.Email);
+                var user = string.IsNullOrWhiteSpace(demoUser.Email) ? null : await userManager.FindByEmailAsync(demoUser.Email);
+
+                if (!demoUser.IsConfigured) {
+                    // Older seeds used a password published in the source code: disable password sign-in for that account.
+                    if (user != null && await userManager.HasPasswordAsync(user)) {
+                        await userManager.RemovePasswordAsync(user);
+                        Console.WriteLine("Password sign-in disabled for the existing default demo user.");
+                    }
+                    Console.WriteLine($"Default demo user is not created: set '{DemoUserOptions.PasswordKey}' via user-secrets or environment variables.");
+                    return;
+                }
+
+                if (!await IsValidPasswordAsync(userManager, demoUser.Password)) {
+                    Console.WriteLine($"'{DemoUserOptions.PasswordKey}' does not satisfy the Identity password rules; default demo user left unchanged.");
+                    return;
+                }
+
                 var resetDemoUser = _config.GetValue<bool>("resetDefaultUser");
                 if (resetDemoUser && user != null) {
                     dbContext.Reports.RemoveRange(dbContext.Reports.Where(r => r.OwnerId == user.Id));
@@ -77,14 +88,35 @@ namespace EqDemo.Services
                         var defaultReportsGenerator = new DefaultReportGenerator(_env, dbContext);
                         await defaultReportsGenerator.GenerateAsync(user);
                     }
+                    else {
+                        Console.WriteLine("Default demo user was not created: " + string.Join("; ", result.Errors.Select(e => e.Description)));
+                    }
                 }
                 else {
-                    await userManager.AddToRoleAsync(user, DefaultEqAuthProvider.EqManagerRole);
+                    if (!await userManager.CheckPasswordAsync(user, demoUser.Password)) {
+                        // Rotate an existing account (e.g. one seeded with the old hard-coded password) to the configured one.
+                        var token = await userManager.GeneratePasswordResetTokenAsync(user);
+                        await userManager.ResetPasswordAsync(user, token, demoUser.Password);
+                    }
+                    if (!await userManager.IsInRoleAsync(user, DefaultEqAuthProvider.EqManagerRole)) {
+                        await userManager.AddToRoleAsync(user, DefaultEqAuthProvider.EqManagerRole);
+                    }
                 }
             }
             catch (Exception ex) {
                 Console.WriteLine(ex);
             }
+        }
+
+        private static async Task<bool> IsValidPasswordAsync(UserManager<IdentityUser> userManager, string password)
+        {
+            foreach (var validator in userManager.PasswordValidators) {
+                var result = await validator.ValidateAsync(userManager, null, password);
+                if (!result.Succeeded) {
+                    return false;
+                }
+            }
+            return true;
         }
 
         private static async Task CheckAddManagerRoleAsync(IServiceProvider scopedServices)
