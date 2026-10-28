@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Hosting;
+using System.Security.Cryptography;
 
 using Korzh.DbUtils;
 
@@ -23,6 +25,8 @@ namespace EqDemo.Services
         {
             _config = config;
             _env = env;
+            var (defaultUserPassword, isGeneratedPassword) = ResolveDefaultUserPassword();
+
             using (var scope = app.ApplicationServices.GetRequiredService<IServiceScopeFactory>().CreateScope())
             using (var context = scope.ServiceProvider.GetService<AppDbContext>()) {
                 if (context.Database.EnsureCreated()) {
@@ -39,7 +43,7 @@ namespace EqDemo.Services
                     await CheckAddManagerRoleAsync(scope.ServiceProvider);
 
                     //create default user
-                    await CheckAddDefaultUserAsync(scope.ServiceProvider);
+                    await CheckAddDefaultUserAsync(scope.ServiceProvider, defaultUserPassword, isGeneratedPassword);
                 }
             }
         }
@@ -49,13 +53,29 @@ namespace EqDemo.Services
                 return _config.GetValue("defaultUserEmail", "demo@korzh.com").ToString();
             }
         }
-        public static string defaultUserPassword {
-            get {
-                return _config.GetValue("defaultUserPassword", "demo").ToString();
+        // Seeded by earlier versions of this sample and published in its source code.
+        private const string PublishedDemoPassword = "demo";
+
+        private static (string Password, bool IsGenerated) ResolveDefaultUserPassword()
+        {
+            var configured = _config.GetValue<string>("defaultUserPassword");
+            if (!string.IsNullOrEmpty(configured)) {
+                if (configured == PublishedDemoPassword && !_env.IsDevelopment()) {
+                    throw new InvalidOperationException(
+                        "'defaultUserPassword' is set to the publicly known sample password. Configure a different value before running outside Development.");
+                }
+                return (configured, false);
             }
+
+            if (!_env.IsDevelopment()) {
+                throw new InvalidOperationException(
+                    "'defaultUserPassword' is not configured. Provide it via an environment variable or a secret store before running outside Development.");
+            }
+
+            return (Convert.ToBase64String(RandomNumberGenerator.GetBytes(18)), true);
         }
 
-        private static async Task CheckAddDefaultUserAsync(IServiceProvider scopedServices)
+        private static async Task CheckAddDefaultUserAsync(IServiceProvider scopedServices, string defaultUserPassword, bool isGeneratedPassword)
         {
             var userManager = scopedServices.GetRequiredService<UserManager<IdentityUser>>();
             try {
@@ -81,14 +101,41 @@ namespace EqDemo.Services
                         await userManager.AddToRoleAsync(user, DefaultEqAuthProvider.EqManagerRole);
                         var defaultReportsGenerator = new DefaultReportGenerator(_env, dbContext);
                         await defaultReportsGenerator.GenerateAsync(user);
+                        ReportGeneratedPassword(isGeneratedPassword, defaultUserPassword);
+                    }
+                    else {
+                        Console.WriteLine("Default user was not created: " + string.Join("; ", result.Errors.Select(e => e.Description)));
                     }
                 }
                 else {
-                    await userManager.AddToRoleAsync(user, DefaultEqAuthProvider.EqManagerRole);
+                    if (defaultUserPassword != PublishedDemoPassword
+                        && await userManager.CheckPasswordAsync(user, PublishedDemoPassword)) {
+                        // Rotate an account seeded by an earlier version that still accepts the published password.
+                        await userManager.RemovePasswordAsync(user);
+                        var result = await userManager.AddPasswordAsync(user, defaultUserPassword);
+                        if (result.Succeeded) {
+                            Console.WriteLine($"Rotated the published password of the default user '{defaultUserEmail}'.");
+                            ReportGeneratedPassword(isGeneratedPassword, defaultUserPassword);
+                        }
+                        else {
+                            Console.WriteLine("Default user password was not rotated: " + string.Join("; ", result.Errors.Select(e => e.Description)));
+                        }
+                    }
+
+                    if (!await userManager.IsInRoleAsync(user, DefaultEqAuthProvider.EqManagerRole)) {
+                        await userManager.AddToRoleAsync(user, DefaultEqAuthProvider.EqManagerRole);
+                    }
                 }
             }
             catch (Exception ex) {
                 Console.WriteLine(ex);
+            }
+        }
+
+        private static void ReportGeneratedPassword(bool isGeneratedPassword, string password)
+        {
+            if (isGeneratedPassword) {
+                Console.WriteLine($"Development: default user '{defaultUserEmail}' has the generated password '{password}'. Set 'defaultUserPassword' to choose your own.");
             }
         }
 
