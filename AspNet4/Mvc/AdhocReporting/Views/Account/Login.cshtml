@@ -6,8 +6,8 @@
     ViewData["Title"] = "Log in";
     ViewData["MenuTitle"] = "Menu";
 
-    const string defaultUserEmail = "demo@korzh.com";
-    const string defaultUserPassword = "demo";
+    var showDefaultUser = Context.IsDebuggingEnabled;
+    var defaultUserEmail = EqDemo.IdentityHelper.DefaultUserEmail;
 }
 
 <div class="container">
@@ -24,14 +24,14 @@
                     <div class="form-group">
                         @Html.LabelFor(m => m.Email, new { @class = "col-md-2 control-label" })
                         <div class="col-md-10">
-                            @Html.TextBoxFor(m => m.Email, new { @class = "form-control", @Value = defaultUserEmail })
+                            @Html.TextBoxFor(m => m.Email, new { @class = "form-control" })
                             @Html.ValidationMessageFor(m => m.Email, "", new { @class = "text-danger" })
                         </div>
                     </div>
                     <div class="form-group">
                         @Html.LabelFor(m => m.Password, new { @class = "col-md-2 control-label" })
                         <div class="col-md-10">
-                            @Html.PasswordFor(m => m.Password, new { @class = "form-control", @value = defaultUserPassword })
+                            @Html.PasswordFor(m => m.Password, new { @class = "form-control" })
                             @Html.ValidationMessageFor(m => m.Password, "", new { @class = "text-danger" })
                         </div>
                     </div>
@@ -65,14 +65,18 @@
                     <p>
                         Some pages of our demo application require an authorization.
                         We did that by purpose - to demonstrate how EasyQuery works in the systems with access control.
-                    <p>
-                        To login you might use the default user with the following credentials:
-                    </p>
-                    <p>
-                        login: <strong>demo@korzh.com</strong>
-                        <br />
-                        password: <strong>demo</strong>
-                    </p>
+                    @if (showDefaultUser)
+                    {
+                        <p>
+                            To login you might use the default user:
+                        </p>
+                        <p>
+                            login: <strong>@defaultUserEmail</strong>
+                            <br />
+                            password: the <code>defaultUserPassword</code> app setting,
+                            or the one generated and written to the debug output when the user was created
+                        </p>
+                    }
                     <p>
                         or you can @Html.ActionLink("register a new account", "Register", new {  ReturnUrl = ViewBag.ReturnUrl }) and unleash all possibilities of this demo.
                     </p>
