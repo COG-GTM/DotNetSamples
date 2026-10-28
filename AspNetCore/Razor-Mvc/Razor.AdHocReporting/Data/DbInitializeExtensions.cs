@@ -44,6 +44,9 @@ namespace EqDemo.Services
             }
         }
 
+        // Value seeded by older versions of this sample; only used to detect and retire accounts that still accept it.
+        private const string PublishedLegacyCredential = "demo";
+
         private static async Task CheckAddDefaultUserAsync(IServiceProvider scopedServices)
         {
             var demoUser = DemoUserOptions.FromConfiguration(_config);
@@ -52,9 +55,11 @@ namespace EqDemo.Services
                 var dbContext = scopedServices.GetRequiredService<AppDbContext>();
                 var user = string.IsNullOrWhiteSpace(demoUser.Email) ? null : await userManager.FindByEmailAsync(demoUser.Email);
 
+                var usesPublishedCredential = user != null && await userManager.CheckPasswordAsync(user, PublishedLegacyCredential);
+
                 if (!demoUser.IsConfigured) {
-                    // Older seeds used a password published in the source code: disable password sign-in for that account.
-                    if (user != null && await userManager.HasPasswordAsync(user)) {
+                    // Accounts seeded by older versions still accept the credential that was published in the source code.
+                    if (usesPublishedCredential) {
                         await userManager.RemovePasswordAsync(user);
                         Console.WriteLine("Password sign-in disabled for the existing default demo user.");
                     }
@@ -93,8 +98,8 @@ namespace EqDemo.Services
                     }
                 }
                 else {
-                    if (!await userManager.CheckPasswordAsync(user, demoUser.Password)) {
-                        // Rotate an existing account (e.g. one seeded with the old hard-coded password) to the configured one.
+                    if (usesPublishedCredential) {
+                        // Rotate an account seeded by older versions to the configured password; other accounts keep theirs.
                         var token = await userManager.GeneratePasswordResetTokenAsync(user);
                         await userManager.ResetPasswordAsync(user, token, demoUser.Password);
                     }
