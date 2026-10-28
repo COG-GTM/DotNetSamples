@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Rewrite;
 
 using EasyData.Export;
@@ -81,6 +82,14 @@ if (app.Environment.IsDevelopment()) {
 }
 else {
     app.UseExceptionHandler("/Error");
+    // The Error page is re-executed with the failed request's HTTP method; render it as GET
+    // so antiforgery validation can stay enabled on it without turning failed POSTs into 400s.
+    app.Use((context, next) => {
+        if (context.Features.Get<IExceptionHandlerFeature>() != null) {
+            context.Request.Method = HttpMethods.Get;
+        }
+        return next(context);
+    });
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
