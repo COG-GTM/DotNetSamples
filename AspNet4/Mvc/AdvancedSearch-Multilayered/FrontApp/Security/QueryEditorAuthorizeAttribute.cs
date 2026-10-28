@@ -9,6 +9,8 @@ namespace EqDemo.Security
     /// <summary>
     /// Restricts an action to authenticated users in the role configured by the
     /// "EqProxy:QueryEditorRole" app setting. Denies everyone while it is empty.
+    /// Cross-origin requests are rejected because Windows credentials are sent
+    /// automatically by the browser (CSRF).
     /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false)]
     public class QueryEditorAuthorizeAttribute : AuthorizeAttribute
@@ -26,9 +28,27 @@ namespace EqDemo.Security
                 && user.IsInRole(role);
         }
 
+        public static bool IsSameOrigin(HttpRequestBase request)
+        {
+            var source = request.Headers["Origin"];
+            if (string.IsNullOrEmpty(source)) {
+                source = request.Headers["Referer"];
+            }
+
+            // Browsers send Origin (or at least Referer) on cross-site writes;
+            // a request with neither did not come from another site's page.
+            if (string.IsNullOrEmpty(source)) {
+                return true;
+            }
+
+            return Uri.TryCreate(source, UriKind.Absolute, out var sourceUri)
+                && Uri.Compare(sourceUri, request.Url, UriComponents.SchemeAndServer,
+                    UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) == 0;
+        }
+
         protected override bool AuthorizeCore(HttpContextBase httpContext)
         {
-            return IsQueryEditor(httpContext);
+            return IsQueryEditor(httpContext) && IsSameOrigin(httpContext.Request);
         }
 
         protected override void HandleUnauthorizedRequest(AuthorizationContext filterContext)
