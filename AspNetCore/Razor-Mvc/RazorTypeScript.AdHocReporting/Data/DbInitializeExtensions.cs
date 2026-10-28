@@ -39,15 +39,33 @@ namespace EqDemo
             }
         }
 
-        const string _defaultUserEmail = "demo@korzh.com";
-        const string _defaultUserPassword = "demo";
+        // Password seeded by older versions of this sample; only used to detect and retire accounts that still accept it.
+        private const string PublishedLegacyCredential = "demo";
 
         private static async Task CheckAddDefaultUserAsync(IServiceProvider scopedServices, IConfiguration config)
         {
+            var demoUser = DemoUserOptions.FromConfiguration(config);
             var userManager = scopedServices.GetRequiredService<UserManager<IdentityUser>>();
 
             try {
-                var user = await userManager.FindByEmailAsync(_defaultUserEmail);
+                var user = string.IsNullOrWhiteSpace(demoUser.Email) ? null : await userManager.FindByEmailAsync(demoUser.Email);
+                if (user != null && await userManager.CheckPasswordAsync(user, PublishedLegacyCredential)) {
+                    var removed = await userManager.RemovePasswordAsync(user);
+                    Console.WriteLine(removed.Succeeded
+                        ? "Published password removed from the existing default demo user."
+                        : "Failed to remove the published password from the default demo user: " + DescribeErrors(removed));
+                }
+
+                if (!demoUser.IsConfigured) {
+                    Console.WriteLine($"Default demo user is not created: set '{DemoUserOptions.PasswordKey}' via user-secrets or environment variables.");
+                    return;
+                }
+
+                if (demoUser.Password == PublishedLegacyCredential || !await IsValidPasswordAsync(userManager, demoUser.Password)) {
+                    Console.WriteLine($"'{DemoUserOptions.PasswordKey}' is the published password or does not satisfy the Identity password rules; default demo user not created.");
+                    return;
+                }
+
                 var resetDemoUser = config.GetValue<bool>("resetDefaultUser");
                 if (resetDemoUser && user != null) {
                     var dbContext = scopedServices.GetRequiredService<AppDbContext>();
@@ -60,24 +78,49 @@ namespace EqDemo
 
                 if (user == null) {
                     user = new IdentityUser() {
-                        UserName = _defaultUserEmail,
-                        Email = _defaultUserEmail,
+                        UserName = demoUser.Email,
+                        Email = demoUser.Email,
                         EmailConfirmed = true
                     };
-                    var result = await userManager.CreateAsync(user, _defaultUserPassword);
+                    var result = await userManager.CreateAsync(user, demoUser.Password);
                     if (result.Succeeded) {
                         await userManager.AddToRoleAsync(user, DefaultEqAuthProvider.EqManagerRole);
                         var defaultReportsGenerator = scopedServices.GetRequiredService<DefaultReportGenerator>();
                         await defaultReportsGenerator.GenerateAsync(user);
                     }
+                    else {
+                        Console.WriteLine("Default demo user was not created: " + DescribeErrors(result));
+                    }
                 }
                 else {
-                    await userManager.AddToRoleAsync(user, DefaultEqAuthProvider.EqManagerRole);
+                    if (!await userManager.HasPasswordAsync(user)) {
+                        var added = await userManager.AddPasswordAsync(user, demoUser.Password);
+                        if (!added.Succeeded) {
+                            Console.WriteLine("Failed to set the configured password on the default demo user: " + DescribeErrors(added));
+                        }
+                    }
+                    if (!await userManager.IsInRoleAsync(user, DefaultEqAuthProvider.EqManagerRole)) {
+                        await userManager.AddToRoleAsync(user, DefaultEqAuthProvider.EqManagerRole);
+                    }
                 }
             }
             catch (Exception ex) {
                 Console.WriteLine(ex);
             }
+        }
+
+        private static string DescribeErrors(IdentityResult result)
+            => string.Join("; ", result.Errors.Select(e => e.Description));
+
+        private static async Task<bool> IsValidPasswordAsync(UserManager<IdentityUser> userManager, string password)
+        {
+            foreach (var validator in userManager.PasswordValidators) {
+                var result = await validator.ValidateAsync(userManager, null, password);
+                if (!result.Succeeded) {
+                    return false;
+                }
+            }
+            return true;
         }
 
         private static async Task CheckAddManagerRoleAsync(IServiceProvider scopedServices)

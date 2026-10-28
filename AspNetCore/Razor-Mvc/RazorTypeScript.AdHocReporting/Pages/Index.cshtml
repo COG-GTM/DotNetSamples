@@ -8,7 +8,8 @@
     ViewData["Title"] = "Ad-hoc reporting demo";
     ViewData["MenuTitle"] = "Ad-hoc reporting demo";
     var appPathBase = Configuration["appPathBase"] ?? "";
-    bool isDefaultUser = User.Identity.Name == "demo@korzh.com";
+    var demoUserEmail = Configuration["DemoUser:Email"];
+    bool isDefaultUser = !string.IsNullOrEmpty(demoUserEmail) && User.Identity.Name == demoUserEmail;
     string tooltipContent = "You are logged in as a demo user. Demo user is not allowed to manage the reports.<br />"
         + "To test this functionlity - please log out and sign in with another account.";
 }
