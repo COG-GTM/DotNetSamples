@@ -3,6 +3,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>b6f3c2a4-1d8e-4f7a-9c5b-3e2d7a6f0c91</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\AdHocReporting.Сlient\AdHocReporting.Сlient.esproj">
