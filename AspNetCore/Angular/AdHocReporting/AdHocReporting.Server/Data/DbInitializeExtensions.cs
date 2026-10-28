@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Hosting;
+using System.Security.Claims;
 using System.Security.Cryptography;
 
 using Korzh.DbUtils;
@@ -101,6 +102,7 @@ namespace EqDemo.Services
                         await userManager.AddToRoleAsync(user, DefaultEqAuthProvider.EqManagerRole);
                         var defaultReportsGenerator = new DefaultReportGenerator(_env, dbContext);
                         await defaultReportsGenerator.GenerateAsync(user);
+                        await SetGeneratedPasswordMarkerAsync(userManager, user, isGeneratedPassword);
                         ReportGeneratedPassword(isGeneratedPassword, defaultUserPassword);
                     }
                     else {
@@ -110,15 +112,28 @@ namespace EqDemo.Services
                 else {
                     if (defaultUserPassword != PublishedDemoPassword
                         && await userManager.CheckPasswordAsync(user, PublishedDemoPassword)) {
-                        // Rotate an account seeded by an earlier version that still accepts the published password.
-                        var resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
-                        var result = await userManager.ResetPasswordAsync(user, resetToken, defaultUserPassword);
-                        if (result.Succeeded) {
+                        // Account seeded by an earlier version that still accepts the published password.
+                        if (await TryReplacePasswordAsync(userManager, user, defaultUserPassword, isGeneratedPassword)) {
                             Console.WriteLine($"Rotated the published password of the default user '{defaultUserEmail}'.");
-                            ReportGeneratedPassword(isGeneratedPassword, defaultUserPassword);
                         }
                         else {
-                            Console.WriteLine("Default user password was not rotated: " + string.Join("; ", result.Errors.Select(e => e.Description)));
+                            await userManager.RemovePasswordAsync(user);
+                            Console.WriteLine($"Removed the published password of the default user '{defaultUserEmail}'. Configure a valid 'defaultUserPassword' and restart to sign in.");
+                        }
+                    }
+                    else if (!await userManager.HasPasswordAsync(user)) {
+                        if (await TryReplacePasswordAsync(userManager, user, defaultUserPassword, isGeneratedPassword)) {
+                            Console.WriteLine($"Set the password of the default user '{defaultUserEmail}'.");
+                        }
+                    }
+                    else if (await HasUnchangedGeneratedPasswordAsync(userManager, user)) {
+                        if (!isGeneratedPassword) {
+                            if (await TryReplacePasswordAsync(userManager, user, defaultUserPassword, false)) {
+                                Console.WriteLine($"Replaced the generated password of the default user '{defaultUserEmail}' with 'defaultUserPassword'.");
+                            }
+                        }
+                        else {
+                            Console.WriteLine($"Development: default user '{defaultUserEmail}' still has the password generated on its first run. Set 'defaultUserPassword' to replace it.");
                         }
                     }
 
@@ -130,6 +145,40 @@ namespace EqDemo.Services
             catch (Exception ex) {
                 Console.WriteLine(ex);
             }
+        }
+
+        // Holds the security stamp from when a generated password was set, so a password the user changed afterwards is never overwritten.
+        private const string GeneratedPasswordClaimType = "eqdemo:generated-password-stamp";
+
+        private static async Task<bool> TryReplacePasswordAsync(UserManager<IdentityUser> userManager, IdentityUser user, string password, bool isGeneratedPassword)
+        {
+            var resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
+            var result = await userManager.ResetPasswordAsync(user, resetToken, password);
+            if (!result.Succeeded) {
+                Console.WriteLine("Default user password was not changed: " + string.Join("; ", result.Errors.Select(e => e.Description)));
+                return false;
+            }
+
+            await SetGeneratedPasswordMarkerAsync(userManager, user, isGeneratedPassword);
+            ReportGeneratedPassword(isGeneratedPassword, password);
+            return true;
+        }
+
+        private static async Task SetGeneratedPasswordMarkerAsync(UserManager<IdentityUser> userManager, IdentityUser user, bool isGeneratedPassword)
+        {
+            var markers = (await userManager.GetClaimsAsync(user)).Where(c => c.Type == GeneratedPasswordClaimType).ToList();
+            if (markers.Count > 0) {
+                await userManager.RemoveClaimsAsync(user, markers);
+            }
+            if (isGeneratedPassword) {
+                await userManager.AddClaimAsync(user, new Claim(GeneratedPasswordClaimType, await userManager.GetSecurityStampAsync(user)));
+            }
+        }
+
+        private static async Task<bool> HasUnchangedGeneratedPasswordAsync(UserManager<IdentityUser> userManager, IdentityUser user)
+        {
+            var stamp = await userManager.GetSecurityStampAsync(user);
+            return (await userManager.GetClaimsAsync(user)).Any(c => c.Type == GeneratedPasswordClaimType && c.Value == stamp);
         }
 
         private static void ReportGeneratedPassword(bool isGeneratedPassword, string password)

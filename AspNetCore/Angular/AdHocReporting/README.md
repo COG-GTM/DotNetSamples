@@ -22,8 +22,9 @@ Its password is never stored in the repository:
 
 * Set it with `dotnet user-secrets set "defaultUserPassword" "<your-password>"` or the `defaultUserPassword` environment variable.
 * If it is not set in the Development environment, a random password is generated on first run and printed to the console.
+  Setting `defaultUserPassword` later replaces that generated password, unless you have changed it yourself.
 * Outside Development the app refuses to start until `defaultUserPassword` is configured (the old published value `demo` is rejected too).
-  An existing default user that still accepts `demo` is switched to the configured password on startup.
+  An existing default user that still accepts `demo` is switched to the configured password on startup (if the configured value is rejected by the password policy, the `demo` password is removed instead).
 
 
 ### 2. Start the Angular app
