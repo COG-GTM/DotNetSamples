@@ -44,15 +44,18 @@ namespace EqDemo.Services
             }
         }
 
-        const string _defaultUserEmail = "demo@korzh.com";
-        const string _defaultUserPassword = "demo";
-
         private static async Task CheckAddDefaultUserAsync(IServiceProvider scopedServices)
         {
+            var demoUser = DemoUserOptions.FromConfiguration(_config);
+            if (!demoUser.IsConfigured) {
+                Console.WriteLine($"Default demo user is not created: set '{DemoUserOptions.PasswordKey}' via user-secrets or environment variables.");
+                return;
+            }
+
             var userManager = scopedServices.GetRequiredService<UserManager<IdentityUser>>();
             try {
                 var dbContext = scopedServices.GetRequiredService<AppDbContext>();
-                var user = await userManager.FindByEmailAsync(_defaultUserEmail);
+                var user = await userManager.FindByEmailAsync(demoUser.Email);
                 var resetDemoUser = _config.GetValue<bool>("resetDefaultUser");
                 if (resetDemoUser && user != null) {
                     dbContext.Reports.RemoveRange(dbContext.Reports.Where(r => r.OwnerId == user.Id));
@@ -64,11 +67,11 @@ namespace EqDemo.Services
 
                 if (user == null) {
                     user = new IdentityUser() {
-                        UserName = _defaultUserEmail,
-                        Email = _defaultUserEmail,
+                        UserName = demoUser.Email,
+                        Email = demoUser.Email,
                         EmailConfirmed = true
                     };
-                    var result = await userManager.CreateAsync(user, _defaultUserPassword);
+                    var result = await userManager.CreateAsync(user, demoUser.Password);
                     if (result.Succeeded) {
                         await userManager.AddToRoleAsync(user, DefaultEqAuthProvider.EqManagerRole);
                         var defaultReportsGenerator = new DefaultReportGenerator(_env, dbContext);
