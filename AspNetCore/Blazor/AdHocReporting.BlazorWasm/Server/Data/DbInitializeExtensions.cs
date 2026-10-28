@@ -45,7 +45,8 @@ namespace EqDemo.Services
             }
         }
 
-        // Password seeded by older versions of this sample; used only to find and retire accounts that still accept it.
+        // Credentials seeded by older versions of this sample; used only to find and retire accounts that still accept them.
+        private const string LegacyPublishedEmail = "demo@korzh.com";
         private const string LegacyPublishedPassword = "demo";
 
         private static async Task CheckAddDefaultUserAsync(IServiceProvider scopedServices, IConfiguration config, IWebHostEnvironment env)
@@ -58,16 +59,24 @@ namespace EqDemo.Services
                 var user = await userManager.FindByEmailAsync(demoUser.Email);
                 var acceptsLegacyPassword = user != null && await userManager.CheckPasswordAsync(user, LegacyPublishedPassword);
 
+                // After DemoUser:Email is changed, the account seeded by older versions lives under a different address.
+                if (!string.Equals(demoUser.Email, LegacyPublishedEmail, StringComparison.OrdinalIgnoreCase)) {
+                    await RetireLegacyAccountAsync(userManager, logger, await userManager.FindByEmailAsync(LegacyPublishedEmail));
+                }
+
                 if (!env.IsDevelopment()) {
                     if (acceptsLegacyPassword) {
-                        await userManager.RemovePasswordAsync(user);
-                        logger.LogWarning("Password sign-in disabled for the default demo user {Email}: it still accepted the published sample password.", demoUser.Email);
+                        await RetireLegacyAccountAsync(userManager, logger, user);
                     }
                     logger.LogInformation("Default demo user is seeded only in the Development environment.");
                     return;
                 }
 
                 var password = demoUser.Password;
+                if (password == LegacyPublishedPassword) {
+                    logger.LogWarning("'{Key}' is set to the published sample password; a random password is generated instead.", DemoUserOptions.PasswordKey);
+                    password = null;
+                }
                 var passwordGenerated = string.IsNullOrEmpty(password);
                 if (passwordGenerated) {
                     password = GeneratePassword();
@@ -91,10 +100,15 @@ namespace EqDemo.Services
                     };
                     var result = await userManager.CreateAsync(user, password);
                     if (result.Succeeded) {
-                        await userManager.AddToRoleAsync(user, DefaultEqAuthProvider.EqManagerRole);
-                        var defaultReportsGenerator = scopedServices.GetRequiredService<DefaultReportGenerator>();
-                        await defaultReportsGenerator.GenerateAsync(user);
                         LogSeededPassword(logger, demoUser.Email, password, passwordGenerated);
+                        await userManager.AddToRoleAsync(user, DefaultEqAuthProvider.EqManagerRole);
+                        try {
+                            var defaultReportsGenerator = scopedServices.GetRequiredService<DefaultReportGenerator>();
+                            await defaultReportsGenerator.GenerateAsync(user);
+                        }
+                        catch (Exception ex) {
+                            logger.LogWarning(ex, "Default reports were not generated for {Email}.", demoUser.Email);
+                        }
                     }
                     else {
                         logger.LogWarning("Default demo user was not created: {Errors}", string.Join("; ", result.Errors.Select(e => e.Description)));
@@ -121,6 +135,14 @@ namespace EqDemo.Services
             }
             catch (Exception ex) {
                 Console.WriteLine(ex);
+            }
+        }
+
+        private static async Task RetireLegacyAccountAsync(UserManager<ApplicationUser> userManager, ILogger logger, ApplicationUser user)
+        {
+            if (user != null && await userManager.CheckPasswordAsync(user, LegacyPublishedPassword)) {
+                await userManager.RemovePasswordAsync(user);
+                logger.LogWarning("Password sign-in disabled for {Email}: it still accepted the published sample password.", user.Email);
             }
         }
 
