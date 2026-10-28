@@ -105,6 +105,10 @@ app.MapEasyQuery(options => {
     options.UseQueryStore((manager) => new ReportStore(manager.Services));
 
     options.UseDefaultAuthProvider((provider) => {
+        //model loading, data fetching, exporting and the rest of the API require a signed-in user
+        var managerActions = new[] { EqAction.NewQuery, EqAction.SaveQuery, EqAction.RemoveQuery };
+        provider.RequireAuthorization(Enum.GetValues<EqAction>().Except(managerActions).ToArray());
+
         //by default NewQuery, SaveQuery and RemoveQuery actions are accessible by the users with 'eq-manager' role 
         //here you can remove that requirement and make those actions available for all authorized users
         //provider.RequireAuthorization(EqAction.NewQuery, EqAction.SaveQuery, EqAction.RemoveQuery);
