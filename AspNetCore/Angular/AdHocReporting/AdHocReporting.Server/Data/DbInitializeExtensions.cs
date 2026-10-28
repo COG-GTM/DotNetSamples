@@ -67,10 +67,13 @@ namespace EqDemo.Services
 
             try {
                 var email = GetDefaultUserEmail(config);
-                var configuredPassword = GetConfiguredPassword(config, env, logger);
+                var configuredPassword = GetConfiguredPassword(config, logger);
                 var user = await userManager.FindByEmailAsync(email);
+                // The default user is a well-known account, so only create it where it's wanted.
+                // With needAuth=false anonymous requests act as this user (see ReportStore), so it's required there.
+                var seedDefaultUser = config.GetValue("seedDefaultUser", env.IsDevelopment() || !config.GetValue<bool>("needAuth"));
                 var resetDemoUser = config.GetValue<bool>("resetDefaultUser");
-                if (resetDemoUser && user != null) {
+                if (resetDemoUser && seedDefaultUser && user != null) {
                     var dbContext = scopedServices.GetRequiredService<AppDbContext>();
                     dbContext.Reports.RemoveRange(dbContext.Reports.Where(r => r.OwnerId == user.Id));
                     dbContext.SaveChanges();
@@ -80,9 +83,7 @@ namespace EqDemo.Services
                 }
 
                 if (user == null) {
-                    // The default user is a well-known account, so only create it where it's wanted.
-                    // With needAuth=false anonymous requests act as this user (see ReportStore), so it's required there.
-                    if (!config.GetValue("seedDefaultUser", env.IsDevelopment() || !config.GetValue<bool>("needAuth"))) {
+                    if (!seedDefaultUser) {
                         return;
                     }
 
@@ -113,15 +114,15 @@ namespace EqDemo.Services
             }
         }
 
-        private static string GetConfiguredPassword(IConfiguration config, IWebHostEnvironment env, ILogger logger)
+        private static string GetConfiguredPassword(IConfiguration config, ILogger logger)
         {
             var password = config["defaultUserPassword"];
             if (string.IsNullOrEmpty(password)) {
                 return null;
             }
 
-            if (password == LegacyDefaultUserPassword && !env.IsDevelopment()) {
-                logger.LogWarning("Ignoring the publicly known 'defaultUserPassword' value outside Development.");
+            if (password == LegacyDefaultUserPassword) {
+                logger.LogWarning("Ignoring the publicly known 'defaultUserPassword' value.");
                 return null;
             }
 
@@ -159,8 +160,20 @@ namespace EqDemo.Services
                 return;
             }
 
-            await userManager.RemovePasswordAsync(user);
-            var result = await userManager.AddPasswordAsync(user, newPassword);
+            // Validate first so a rejected password never leaves the user without one.
+            foreach (var validator in userManager.PasswordValidators) {
+                var validation = await validator.ValidateAsync(userManager, user, newPassword);
+                if (!validation.Succeeded) {
+                    logger.LogError("Could not set the password of default user {Email}: {Errors}", user.Email,
+                        string.Join("; ", validation.Errors.Select(e => e.Description)));
+                    return;
+                }
+            }
+
+            var result = await userManager.RemovePasswordAsync(user);
+            if (result.Succeeded) {
+                result = await userManager.AddPasswordAsync(user, newPassword);
+            }
             if (!result.Succeeded) {
                 logger.LogError("Could not set the password of default user {Email}: {Errors}", user.Email,
                     string.Join("; ", result.Errors.Select(e => e.Description)));

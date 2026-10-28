@@ -78,12 +78,14 @@ namespace EqDemo
                     RequireUppercase = false,
                 };
 
+                // The default user is a well-known account, so only create it where it's wanted.
+                var seedDefaultUser = GetBoolSetting("seedDefaultUser", IsDevelopment);
                 var resetDemoUser = GetBoolSetting("resetDefaultUser", false);
 
                 var user = userManager.FindByEmail(defaultUserEmail);
 
                 //remove default user if "resetDefaultUser" option is set to true
-                if (resetDemoUser && user != null) {
+                if (resetDemoUser && seedDefaultUser && user != null) {
                     dbContext.Reports.RemoveRange(dbContext.Reports.Where(r => r.OwnerId == user.Id));
                     dbContext.SaveChanges();
 
@@ -92,8 +94,7 @@ namespace EqDemo
                 }
 
                 if (user == null) {
-                    // The default user is a well-known account, so only create it where it's wanted.
-                    if (!GetBoolSetting("seedDefaultUser", IsDevelopment)) {
+                    if (!seedDefaultUser) {
                         return;
                     }
 
@@ -125,8 +126,8 @@ namespace EqDemo
                 return null;
             }
 
-            if (password == LegacyDefaultUserPassword && !IsDevelopment) {
-                Trace.TraceWarning("Ignoring the publicly known 'defaultUserPassword' value outside development.");
+            if (password == LegacyDefaultUserPassword) {
+                Trace.TraceWarning("Ignoring the publicly known 'defaultUserPassword' value.");
                 return null;
             }
 
@@ -166,8 +167,14 @@ namespace EqDemo
                 return;
             }
 
-            userManager.RemovePassword(user.Id);
-            var result = userManager.AddPassword(user.Id, newPassword);
+            // Validate first so a rejected password never leaves the user without one.
+            var result = userManager.PasswordValidator.ValidateAsync(newPassword).GetAwaiter().GetResult();
+            if (result.Succeeded) {
+                result = userManager.RemovePassword(user.Id);
+            }
+            if (result.Succeeded) {
+                result = userManager.AddPassword(user.Id, newPassword);
+            }
             if (!result.Succeeded) {
                 Trace.TraceError("Could not set the password of default user {0}: {1}", user.Email, string.Join("; ", result.Errors));
             }
