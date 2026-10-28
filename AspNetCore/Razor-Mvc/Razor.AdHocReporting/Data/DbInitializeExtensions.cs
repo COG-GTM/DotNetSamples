@@ -98,7 +98,7 @@ namespace EqDemo.Services
                     }
                 }
                 else {
-                    if (usesPublishedCredential) {
+                    if (usesPublishedCredential && !await userManager.CheckPasswordAsync(user, demoUser.Password)) {
                         // Rotate an account seeded by older versions to the configured password; other accounts keep theirs.
                         var token = await userManager.GeneratePasswordResetTokenAsync(user);
                         await userManager.ResetPasswordAsync(user, token, demoUser.Password);
