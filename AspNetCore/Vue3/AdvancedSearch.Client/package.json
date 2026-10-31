@@ -10,7 +10,7 @@
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore"
   },
   "dependencies": {
-    "@easydata/core": "1.5.8",
+    "@easydata/core": "1.6.0",
     "@easydata/ui": "1.5.8",
     "@easyquery/core": "7.4.0",
     "@easyquery/ui": "7.4.0",
