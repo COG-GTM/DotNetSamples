@@ -121,6 +121,30 @@ namespace EqDemo.Controllers
 
             orders = orders.DynamicQuery<Order>(_eqManager.Query);
 
+            // the list only shows a few employee columns, so skip loading the employee Photo blob for every row
+            orders = orders.Select(o => new Order {
+                Id = o.Id,
+                OrderDate = o.OrderDate,
+                RequiredDate = o.RequiredDate,
+                ShippedDate = o.ShippedDate,
+                Freight = o.Freight,
+                CustomerID = o.CustomerID,
+                Customer = o.Customer,
+                EmployeeID = o.EmployeeID,
+                Employee = o.Employee == null ? null : new Employee {
+                    Id = o.Employee.Id,
+                    FirstName = o.Employee.FirstName,
+                    LastName = o.Employee.LastName
+                },
+                ShipVia = o.ShipVia,
+                ShipName = o.ShipName,
+                ShipAddress = o.ShipAddress,
+                ShipCity = o.ShipCity,
+                ShipRegion = o.ShipRegion,
+                ShipPostalCode = o.ShipPostalCode,
+                ShipCountry = o.ShipCountry
+            });
+
             var list = orders.ToPagedList(_eqManager.Chunk.Page, 15);
             ViewData["Text"] = text;
 
